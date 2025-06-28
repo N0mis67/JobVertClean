@@ -203,7 +203,11 @@ export default async function JobIdPage({ params }: { params: Params }) {
                 S'il vous plaît, laissez {data.company.name} savoir que vous avez trouvé cet emploi sur JobVert. Cela nous aide à grandir !
                 </p>
               </div>
-              <Button className="w-full">Postuler maintenant</Button>
+              <Button className="w-full">
+                <Link href={`/job/${jobId}/apply`}>
+                  Postuler maintenant
+                </Link>
+              </Button>
             </div>
           </Card>
 

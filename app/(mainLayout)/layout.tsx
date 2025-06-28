@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/general/Navbar";
+import { Footer } from "@/components/general/footer";
 import { ReactNode } from "react";
 
 export default function MainLayout({children}: {children: ReactNode}) {
@@ -6,6 +7,7 @@ export default function MainLayout({children}: {children: ReactNode}) {
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
             <Navbar />
             {children}
+            <Footer />
         </div>
     )
 }
