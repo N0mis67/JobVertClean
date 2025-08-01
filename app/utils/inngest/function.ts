@@ -8,16 +8,16 @@ export const handleJobExpiration = inngest.createFunction(
     const { jobId, expirationDays } = event.data;
 
     // Wait for the specified duration
-    await step.sleep("wait-for-expiration", `${expirationDays}d`);
+    const days = Number(expirationDays);
+    await step.sleep("wait-for-expiration", `${days}d`);
 
-    // Update job status to expired
-    await step.run("update-job-status", async () => {
-      await prisma.jobPost.update({
+    // delete job post after expiration
+    await step.run("delete-job-post", async () => {
+      await prisma.jobPost.delete({
         where: { id: jobId },
-        data: { status: "EXPIRED" },
       });
     });
 
-    return { jobId, message: "Job marqué comme expiré" };
+    return { jobId, message: "Job supprimé" };
   }   
 );

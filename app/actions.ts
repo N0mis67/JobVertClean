@@ -147,11 +147,17 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
   });
 
   // Trigger the job expiration function
+  const planDuration: Record<string, number> = {
+    Bonsai: 30,
+    Arbuste: 60,
+    Forêt: 365,
+  }
+
   await inngest.send({
     name: "job/created",
     data: {
       jobId: jobPost.id,
-      expirationDays: validatedData.listingPlan,
+      expirationDays: planDuration[validatedData.listingPlan],
     },
   });
  
@@ -171,7 +177,7 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
       {
         price_data: {
           product_data: {
-            name: `Job Posting - ${pricingTier.name} Days`,
+            name: `Job Posting - ${pricingTier.durationDays} Days`,
             description: pricingTier.features.join(","),
             images: [
               "https://pve1u6tfz1.ufs.sh/f/Ae8VfpRqE7c0gFltIEOxhiBIFftvV4DTM8a13LU5EyzGb2SQ",
