@@ -6,11 +6,13 @@ import { companySchema, jobSchema, jobSeekerSchema } from "./utils/zodSchemas";
 import { prisma } from "./utils/db";
 import { redirect } from "next/navigation";
 import { stripe } from "./utils/stripe";
-import { jobListingDurationPricing } from "./utils/pricingTiers";
+import { jobListingDurationPricing, planDuration } from "./utils/pricingTiers";
 import { revalidatePath } from "next/cache";
 import arcjet, { detectBot, shield } from "./utils/arcjet";
 import { request } from "@arcjet/next";
 import { inngest } from "./utils/inngest/client";
+import { JobPostStatus } from "@prisma/client";
+
 
 const aj = arcjet
   .withRule(
@@ -115,6 +117,26 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
     return redirect("/");
   }
 
+  const pricingTier = jobListingDurationPricing.find(
+    (tier) => tier.name === validatedData.listingPlan
+  );
+
+  if (!pricingTier) {
+    throw new Error("Invalid listing plan selected");
+  }
+
+  const existingPosts = await prisma.jobPost.count({
+    where: {
+      companyId: company.id,
+      listingPlan: validatedData.listingPlan,
+      status: { not: JobPostStatus.EXPIRED },
+    },
+  });
+
+  if (existingPosts >= pricingTier.jobLimit) {
+    throw new Error("Job limit reached for this plan");
+  }
+
   let stripeCustomerId = company.user.stripeCustomerId;
 
   if (!stripeCustomerId) {
@@ -147,12 +169,6 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
   });
 
   // Trigger the job expiration function
-  const planDuration: Record<string, number> = {
-    Bonsai: 30,
-    Arbuste: 60,
-    Forêt: 365,
-  }
-
   await inngest.send({
     name: "job/created",
     data: {
@@ -161,16 +177,6 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
     },
   });
  
-
-  // Get price from pricing tiers based on duration
-  const pricingTier = jobListingDurationPricing.find(
-    (tier) => tier.name === validatedData.listingPlan
-  );
-
-  if (!pricingTier) {
-    throw new Error("Invalid listing duration selected");
-  }
-
   const session = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,
     line_items: [
@@ -190,8 +196,10 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
       },
     ],
     mode: "payment",
-    metadata: {
-      jobId: jobPost.id,
+    invoice_creation: { enabled: true },
+    billing_address_collection: "required",
+      metadata: {
+        jobId: jobPost.id,
     },
     success_url: `${process.env.NEXT_PUBLIC_URL}/payment/success`,
     cancel_url: `${process.env.NEXT_PUBLIC_URL}/payment/cancel`,

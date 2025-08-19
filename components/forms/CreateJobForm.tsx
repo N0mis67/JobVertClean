@@ -34,8 +34,8 @@ import { jobSchema } from "@/app/utils/zodSchemas";
 import { SalaryRangeSelector } from "../general/SalaryRangeSelector";
 import JobDescriptionEditor from "../richTextEditor/JobDescriptionEditor";
 import BenefitsSelector from "../general/BenefitsSelector";
-import { JobListingDurationSelector } from "../general/JobListingDurationSelector";
 import { createJob } from "@/app/actions";
+import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
 
 interface CreateJobFormProps {
   companyName: string;
@@ -412,9 +412,11 @@ export function CreateJobForm({
           </SelectTrigger>
         </FormControl>
         <SelectContent>
-          <SelectItem value="Bonsai">Bonsai – 1 job / mois – 79€</SelectItem>
-          <SelectItem value="Arbuste">Arbuste – 3 jobs / mois – 149€</SelectItem>
-          <SelectItem value="Forêt">Forêt – illimité – 249€</SelectItem>
+          {jobListingDurationPricing.map((plan) => (
+            <SelectItem key={plan.name} value={plan.name}>
+              {`${plan.name} – ${plan.jobLimit} job${plan.jobLimit > 1 ? "s" : ""} / ${plan.durationDays} jours – ${plan.priceMonthly}€`}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
       <FormMessage />

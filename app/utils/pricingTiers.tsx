@@ -33,3 +33,11 @@ export const jobListingDurationPricing = [
     ],
   },
 ];
+
+// Map of plan names to their duration in days for easy access across the app
+export const planDuration: Record<string, number> = Object.fromEntries(
+  jobListingDurationPricing.map(({ name, durationDays }) => [
+    name,
+    durationDays,
+  ])
+);

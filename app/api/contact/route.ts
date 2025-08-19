@@ -31,8 +31,8 @@ export async function POST(req: Request) {
 
     // Envoi de l’e-mail avec Resend
     const data = await resend.emails.send({
-      from: "JobVert Contact <simonprodhomme67@gmail.com>",
-      to: ["simon.pdh.writing@gmail.com"],
+      from: "JobVert Contact <contact@jobvert.fr>",
+      to: ["contact@jobvert.fr"],
       subject: `Nouveau message de ${firstName} ${lastName}`,
       replyTo: email,
       text: `

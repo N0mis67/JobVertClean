@@ -19,7 +19,7 @@ import { countryList } from "@/app/utils/countriesList";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
-const jobTypes = ["Temps plein", "Temps partiel", "intérimaire", "stagiaire/apprentis"];
+const jobTypes = ["Temps plein", "Temps partiel", "intérimaire", "stagiaire/apprentissage"];
 
 export function JobFilters() {
   const router = useRouter();

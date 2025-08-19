@@ -7,9 +7,9 @@ import { benefits } from "@/app/utils/listOfBenefits";
 import { JsonToHtml } from "@/components/general/JsonToHtml";
 import { SaveJobButton } from "@/components/general/SubmitButtons";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
 import { request } from "@arcjet/next";
 import { Heart } from "lucide-react";
 import Image from "next/image";
@@ -224,7 +224,13 @@ export default async function JobIdPage({ params }: { params: Params }) {
                   <span className="text-sm">
                     {new Date(
                       data.createdAt.getTime() +
-                      data.createdAt.getTime() + Number(data.listingPlan) * 24 * 60 * 60 * 1000
+                     (jobListingDurationPricing.find(
+                        (plan) => plan.name === data.listingPlan
+                      )?.durationDays ?? 0) *
+                        24 *
+                        60 *
+                        60 *
+                        1000
                     ).toLocaleDateString("fr-FR", {
                       month: "long",
                       day: "numeric",
