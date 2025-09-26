@@ -14,9 +14,24 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { UserDropdown } from "@/components/general/UserDropdown";
+import { prisma} from "@/app/utils/db";
 
 export async function Navbar() {
   const session = await auth();
+  let companyId: string | null = null;
+
+  if (session?.user?.id) {
+    const company = await prisma.company.findUnique({
+      where: {
+        userId: session.user.id as string,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    companyId = company?.id ?? null;
+  }
     return (
         <nav className="flex items-center justify-between py-5">
             <Link href="/" className="flex items-center gap-2">
@@ -36,6 +51,7 @@ export async function Navbar() {
                 email={session.user.email as string}
                 name={session.user.name as string}
                 image={session.user.image as string}
+                companyId={companyId}
               />
             ) : (
               <Link
@@ -53,6 +69,7 @@ export async function Navbar() {
             email={session.user.email as string}
             name={session.user.name as string}
             image={session.user.image as string}
+            companyId={companyId}
           />
         ) : (
           <Sheet>

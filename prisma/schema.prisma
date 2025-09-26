@@ -107,6 +107,7 @@ model Company {
   website  String?
   xAccount String?
   about    String
+  defaultListingPlan ListingPlan?
   user     User    @relation(fields: [userId], references: [id])
   userId   String  @unique
 

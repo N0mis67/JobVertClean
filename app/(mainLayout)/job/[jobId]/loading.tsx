@@ -101,6 +101,7 @@ const LoadingJobPage = () => {
                   <Skeleton className="h-4 w-[200px]" />
                 </div>
               </div>
+              <Skeleton className="h-10 w-full" />
             </div>
           </Card>
         </div>

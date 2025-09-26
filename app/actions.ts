@@ -62,6 +62,36 @@ export async function createCompany(data: z.infer<typeof companySchema>) {
   return redirect("/");
 }
 
+export async function updateCompanyProfile(data: z.infer<typeof companySchema>) {
+  const user = await requireUser();
+
+  const validatedData = companySchema.parse(data);
+
+  const company = await prisma.company.findUnique({
+    where: {
+      userId: user.id as string,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!company) {
+    throw new Error("Company not found");
+  }
+
+  await prisma.company.update({
+    where: { id: company.id },
+    data: {
+      ...validatedData,
+    },
+  });
+
+  revalidatePath(`/company/${company.id}`);
+  revalidatePath("/post-job");
+  revalidatePath("/my-jobs");
+}
+
 export async function createJobSeeker(data: z.infer<typeof jobSeekerSchema>) {
   const user = await requireUser();
 
@@ -105,6 +135,7 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
     },
     select: {
       id: true,
+
       user: {
         select: {
           stripeCustomerId: true,
@@ -125,34 +156,19 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
     throw new Error("Invalid listing plan selected");
   }
 
-  const existingPosts = await prisma.jobPost.count({
+  const activePosts = await prisma.jobPost.count({
     where: {
       companyId: company.id,
       listingPlan: validatedData.listingPlan,
-      status: { not: JobPostStatus.EXPIRED },
+      status: JobPostStatus.ACTIVE,
     },
   });
 
-  if (existingPosts >= pricingTier.jobLimit) {
+  if (activePosts >= pricingTier.jobLimit) {
     throw new Error("Job limit reached for this plan");
   }
 
-  let stripeCustomerId = company.user.stripeCustomerId;
-
-  if (!stripeCustomerId) {
-    const customer = await stripe.customers.create({
-      email: user.email!,
-      name: user.name || undefined,
-    });
-
-    stripeCustomerId = customer.id;
-
-    // Update user with Stripe customer ID
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { stripeCustomerId: customer.id },
-    });
-  }
+  const requiresPayment = activePosts === 0;
 
   const jobPost = await prisma.jobPost.create({
     data: {
@@ -165,8 +181,11 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
       salaryTo: validatedData.salaryTo,
       listingPlan: validatedData.listingPlan,
       benefits: validatedData.benefits,
+      ...(requiresPayment ? {} : { status: JobPostStatus.ACTIVE }),
     },
   });
+
+  
 
   // Trigger the job expiration function
   await inngest.send({
@@ -177,35 +196,58 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
     },
   });
  
-  const session = await stripe.checkout.sessions.create({
-    customer: stripeCustomerId,
-    line_items: [
-      {
-        price_data: {
-          product_data: {
-            name: `Job Posting - ${pricingTier.durationDays} Days`,
-            description: pricingTier.features.join(","),
-            images: [
-              "https://pve1u6tfz1.ufs.sh/f/Ae8VfpRqE7c0gFltIEOxhiBIFftvV4DTM8a13LU5EyzGb2SQ",
-            ],
+  if (requiresPayment) {
+    let stripeCustomerId = company.user.stripeCustomerId;
+
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: user.email!,
+        name: user.name || undefined,
+      });
+
+      stripeCustomerId = customer.id;
+
+      // Update user with Stripe customer ID
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { stripeCustomerId: customer.id },
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      customer: stripeCustomerId,
+      line_items: [
+        {
+          price_data: {
+            product_data: {
+              name: `Job Posting - ${pricingTier.durationDays} Days`,
+              description: pricingTier.features.join(","),
+              images: [
+                "https://pve1u6tfz1.ufs.sh/f/Ae8VfpRqE7c0gFltIEOxhiBIFftvV4DTM8a13LU5EyzGb2SQ",
+              ],
+            },
+            currency: "EUR",
+            unit_amount: pricingTier.priceMonthly * 100, // Convert to cents for Stripe
+           
           },
-          currency: "EUR",
-          unit_amount: pricingTier.priceMonthly * 100, // Convert to cents for Stripe
+          quantity: 1,
         },
-        quantity: 1,
-      },
-    ],
-    mode: "payment",
-    invoice_creation: { enabled: true },
-    billing_address_collection: "required",
+        ],
+      mode: "payment",
+      invoice_creation: { enabled: true },
+      billing_address_collection: "required",
       metadata: {
         jobId: jobPost.id,
-    },
-    success_url: `${process.env.NEXT_PUBLIC_URL}/payment/success`,
-    cancel_url: `${process.env.NEXT_PUBLIC_URL}/payment/cancel`,
-  });
 
-  return redirect(session.url as string);
+      },
+      success_url: `${process.env.NEXT_PUBLIC_URL}/payment/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_URL}/payment/cancel`,
+     });
+
+     return redirect(session.url as string);
+  }
+    
+  return redirect("/payment/success");
 }
 
 export async function updateJobPost(
@@ -280,4 +322,5 @@ export async function unsaveJobPost(savedJobPostId: string) {
   });
 
   revalidatePath(`/job/${data.jobId}`);
+ 
 }

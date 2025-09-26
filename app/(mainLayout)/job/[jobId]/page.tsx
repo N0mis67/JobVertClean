@@ -62,6 +62,7 @@ async function getJob(jobId: string, userId?: string) {
         listingPlan: true,
         company: {
           select: {
+            id: true,
             name: true,
             logo: true,
             location: true,
@@ -287,9 +288,11 @@ export default async function JobIdPage({ params }: { params: Params }) {
                   </p>
                 </div>
               </div>
-              {/*  <Button variant="outline" className="w-full">
-                View company profile
-              </Button> */}
+              <Button variant="outline" className="w-full" asChild>
+                <Link href={`/company/${data.company.id}`}>
+                  Voir le profil entreprise
+                </Link>
+              </Button>
             </div>
           </Card>
         </div>

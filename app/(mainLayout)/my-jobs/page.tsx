@@ -44,6 +44,7 @@ async function getJobs(userId: string) {
       jobTitle: true,
       status: true,
       createdAt: true,
+      applications: true,
       company: {
         select: {
           name: true,
@@ -74,11 +75,21 @@ const MyJobs = async () => {
         />
       ) : (
         <Card>
-          <CardHeader>
-            <CardTitle>Mes Jobs</CardTitle>
-            <CardDescription>
-            Gérez vos offres d'emploi et vos candidatures ici.
-            </CardDescription>
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle>Mes Jobs</CardTitle>
+              <CardDescription>
+                Gérez vos offres d&apos;emploi et suivez vos candidatures.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link href="/post-job">Créer un job</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/company/settings">Modifier le profil entreprise</Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -119,7 +130,7 @@ const MyJobs = async () => {
                       {listing.status.charAt(0).toUpperCase() +
                         listing.status.slice(1).toLowerCase()}
                     </TableCell>
-                    <TableCell>5</TableCell>
+                    <TableCell>{listing.applications}</TableCell>
                     <TableCell>
                       {listing.createdAt.toLocaleDateString("fr-FR", {
                         month: "long",
