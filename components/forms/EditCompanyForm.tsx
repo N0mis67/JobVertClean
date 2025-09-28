@@ -10,6 +10,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormDescription,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
@@ -31,6 +32,8 @@ import { toast } from "sonner";
 import { companySchema } from "@/app/utils/zodSchemas";
 import { updateCompanyProfile } from "@/app/actions";
 import { countryList } from "@/app/utils/countriesList";
+import type { ListingPlanName } from "@/types/subscription";
+
 
 interface EditCompanyFormProps {
   company: {
@@ -40,6 +43,7 @@ interface EditCompanyFormProps {
     logo: string;
     website: string | null;
     xAccount: string | null;
+    defaultListingPlan: ListingPlanName | null;
   };
 }
 
@@ -55,6 +59,7 @@ export function EditCompanyForm({ company }: EditCompanyFormProps) {
       logo: company.logo,
       website: company.website ?? "",
       xAccount: company.xAccount ?? "",
+      defaultListingPlan: company.defaultListingPlan,
     },
   });
 
@@ -148,6 +153,41 @@ export function EditCompanyForm({ company }: EditCompanyFormProps) {
             )}
           />
         </div>
+
+         <FormField
+          control={form.control}
+          name="defaultListingPlan"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Plan préféré pour vos futures offres</FormLabel>
+              <Select
+                onValueChange={(value) =>
+                  field.onChange(value === "" ? null : (value as ListingPlanName))
+                }
+                defaultValue={field.value ?? ""}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Toujours me demander" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">Toujours me demander</SelectItem>
+                  <SelectGroup>
+                    <SelectLabel>Abonnements disponibles</SelectLabel>
+                    <SelectItem value="Bonsai">Bonsai</SelectItem>
+                    <SelectItem value="Arbuste">Arbuste</SelectItem>
+                    <SelectItem value="Forêt">Forêt</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Ce plan sera proposé par défaut lors de la création d'une nouvelle offre.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

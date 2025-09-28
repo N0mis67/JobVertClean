@@ -24,6 +24,7 @@ export default async function CompanySettingsPage() {
       logo: true,
       website: true,
       xAccount: true,
+      defaultListingPlan: true,
     },
   });
 

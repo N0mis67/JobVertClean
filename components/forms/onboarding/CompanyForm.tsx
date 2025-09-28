@@ -9,6 +9,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormDescription,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
@@ -31,6 +32,11 @@ import {
 } from "@/components/ui/select";
 import { countryList } from "@/app/utils/countriesList";
 import { UploadDropzone } from "@/components/general/UploadThingReExport";
+import type { ListingPlanName } from "@/types/subscription";
+import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
+
+const ALWAYS_ASK_VALUE = "always-ask";
+
 
 
 export default function CompanyForm() {
@@ -43,6 +49,7 @@ export default function CompanyForm() {
             name:"",
             website:"",
             xAccount:"",
+            defaultListingPlan: null,
         },
     });
 
@@ -207,6 +214,41 @@ export default function CompanyForm() {
                   )}
                     </div>
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="defaultListingPlan"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Plan sélectionné par défaut</FormLabel>
+                  <Select
+                    onValueChange={(value) =>
+                      field.onChange(value === "" ? null : (value as ListingPlanName))
+                    }
+                    defaultValue={field.value ?? ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Toujours me demander" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={ALWAYS_ASK_VALUE}>Toujours me demander</SelectItem>
+                      <SelectGroup>
+                        <SelectLabel>Abonnements disponibles</SelectLabel>
+                        <SelectItem value="Bonsai">Bonsai</SelectItem>
+                        <SelectItem value="Arbuste">Arbuste</SelectItem>
+                        <SelectItem value="Forêt">Forêt</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Cette préférence sera utilisée pour pré-remplir vos prochaines offres.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

@@ -108,6 +108,7 @@ model Company {
   xAccount String?
   about    String
   defaultListingPlan ListingPlan?
+  lastUsedListingPlan ListingPlan?
   user     User    @relation(fields: [userId], references: [id])
   userId   String  @unique
 

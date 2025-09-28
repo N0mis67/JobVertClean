@@ -195,6 +195,15 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
       expirationDays: planDuration[validatedData.listingPlan],
     },
   });
+
+  await prisma.company.update({
+    where: { id: company.id },
+    data: { lastUsedListingPlan: validatedData.listingPlan },
+  });
+
+  revalidatePath("/post-job");
+  revalidatePath("/my-jobs");
+  revalidatePath("/payment/success");
  
   if (requiresPayment) {
     let stripeCustomerId = company.user.stripeCustomerId;

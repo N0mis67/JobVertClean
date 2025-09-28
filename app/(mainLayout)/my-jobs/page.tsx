@@ -24,13 +24,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PenBoxIcon, User2, XCircle } from "lucide-react";
+import { MoreHorizontal, PenBoxIcon, User2, XCircle, CopyPlus } from "lucide-react";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/general/EmptyState";
 import { prisma } from "@/app/utils/db";
 import { requireUser } from "@/app/utils/hook";
 import { CopyLinkMenuItem } from "@/components/general/CopyLink";
+import { PlanUsageSummary } from "@/components/subscription/PlanUsageSummary";
+import { Badge } from "@/components/ui/badge";
+import { getCompanyPlanUsage } from "@/app/utils/subscription";
 
 async function getJobs(userId: string) {
   const data = await prisma.jobPost.findMany({
@@ -62,10 +65,76 @@ async function getJobs(userId: string) {
 
 const MyJobs = async () => {
   const session = await requireUser();
-  const data = await getJobs(session.id as string);
+  const company = await prisma.company.findUnique({
+    where: {
+      userId: session.id as string,
+    },
+    select: {
+      id: true,
+      defaultListingPlan: true,
+      lastUsedListingPlan: true,
+    },
+  });
+
+  if (!company) {
+    return (
+      <EmptyState
+        title="Aucune entreprise trouvée"
+        description="Complétez votre profil entreprise pour commencer à publier des offres."
+        buttonText="Compléter mon profil"
+        href="/onboarding"
+      />
+    );
+  }
+
+  const [data, planUsage] = await Promise.all([
+    getJobs(session.id as string),
+    getCompanyPlanUsage(company.id),
+  ]);
+
+  const highlightedPlan =
+    company.lastUsedListingPlan ||
+    company.defaultListingPlan ||
+    planUsage[0]?.plan;
+
+  const blockedPlans = planUsage.filter((plan) => plan.remaining === 0);
 
   return (
     <>
+    <Card className="mb-6">
+        <CardHeader className="space-y-3">
+          <div>
+            <CardTitle>Quota restant</CardTitle>
+            <CardDescription>
+              Suivez votre consommation par abonnement et anticipez les prochaines publications.
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            {highlightedPlan ? (
+              <Badge variant="secondary">Plan prioritaire : {highlightedPlan}</Badge>
+            ) : null}
+            {company.defaultListingPlan ? (
+              <span>Préférence définie : {company.defaultListingPlan}</span>
+            ) : (
+              <span>Préférence : toujours demander</span>
+            )}
+          </div>
+          {blockedPlans.length > 0 ? (
+            <p className="text-sm text-red-600">
+              {blockedPlans.length === 1
+                ? `Le plan ${blockedPlans[0].plan} a atteint son quota.`
+                : "Certains plans ont atteint leur quota."}{" "}
+              <Link href="/contact" className="underline">
+                Augmenter mon plan
+              </Link>
+            </p>
+          ) : null}
+        </CardHeader>
+        <CardContent>
+          <PlanUsageSummary planUsage={planUsage} highlightPlan={highlightedPlan ?? undefined} />
+        </CardContent>
+      </Card>
+
       {data.length === 0 ? (
         <EmptyState
           title="Aucun job trouvé"
@@ -151,6 +220,12 @@ const MyJobs = async () => {
                             <Link href={`/my-jobs/${listing.id}/edit`}>
                               <PenBoxIcon className="size-4" />
                               Modifier
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/my-jobs/${listing.id}/duplicate`}>
+                              <CopyPlus className="size-4" />
+                              Dupliquer
                             </Link>
                           </DropdownMenuItem>
                           <CopyLinkMenuItem

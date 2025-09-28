@@ -13,6 +13,10 @@ import { CreateJobForm } from "@/components/forms/CreateJobForm";
 import { prisma } from "@/app/utils/db";
 import { requireUser } from "@/app/utils/hook";
 import { redirect } from "next/navigation";
+import {
+  getCompanyPlanUsage,
+  resolveInitialPlan,
+} from "@/app/utils/subscription";
 
 const companies = [
   { id: 0, name: "ArcJet", logo: ArcJetLogo },
@@ -56,12 +60,15 @@ async function getCompany(userId: string) {
       userId: userId,
     },
     select: {
+      id: true,
       name: true,
       location: true,
       about: true,
       logo: true,
       xAccount: true,
       website: true,
+      defaultListingPlan: true,
+      lastUsedListingPlan: true,
     },
   });
 
@@ -74,6 +81,11 @@ async function getCompany(userId: string) {
 const PostJobPage = async () => {
   const session = await requireUser();
   const data = await getCompany(session.id as string);
+  const planUsage = await getCompanyPlanUsage(data.id);
+  const { plan: initialPlan, reason } = resolveInitialPlan(planUsage, {
+    lastUsed: data.lastUsedListingPlan,
+    defaultPlan: data.defaultListingPlan,
+  });
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-5">
       <CreateJobForm
@@ -83,6 +95,10 @@ const PostJobPage = async () => {
         companyName={data.name}
         companyXAccount={data.xAccount}
         companyWebsite={data.website}
+        planUsage={planUsage}
+        initialPlan={initialPlan}
+        autoSelectionReason={reason}
+        defaultListingPlan={data.defaultListingPlan ?? null}
       />
 
       <div className="col-span-1">

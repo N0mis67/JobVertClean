@@ -1,7 +1,36 @@
 "use client";
 
+import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { XIcon } from "lucide-react";
+import { toast } from "sonner";
+import { createJob } from "@/app/actions";
 import { countryList } from "@/app/utils/countriesList";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
+import { jobSchema } from "@/app/utils/zodSchemas";
+import { cn } from "@/lib/utils";
+import type {
+  AutoSelectionReason,
+  ListingPlanName,
+  PlanUsage,
+} from "@/types/subscription";
+import BenefitsSelector from "../general/BenefitsSelector";
+import { UploadDropzone } from "../general/UploadThingReExport";
+import { SalaryRangeSelector } from "../general/SalaryRangeSelector";
+import JobDescriptionEditor from "../richTextEditor/JobDescriptionEditor";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import {
   Form,
   FormControl,
@@ -21,38 +50,36 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Textarea } from "../ui/textarea";
-import { XIcon } from "lucide-react";
-import { Button } from "../ui/button";
-import Image from "next/image";
-import { toast } from "sonner";
-import { UploadDropzone } from "../general/UploadThingReExport";
-import { useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { jobSchema } from "@/app/utils/zodSchemas";
-import { SalaryRangeSelector } from "../general/SalaryRangeSelector";
-import JobDescriptionEditor from "../richTextEditor/JobDescriptionEditor";
-import BenefitsSelector from "../general/BenefitsSelector";
-import { createJob } from "@/app/actions";
-import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
+import { PlanUsageSummary } from "../subscription/PlanUsageSummary";
 
 interface CreateJobFormProps {
   companyName: string;
   companyLocation: string;
-  companyAbout: string;    
+  companyAbout: string;
   companyLogo: string;
   companyXAccount: string | null;
   companyWebsite: string | null;
+  planUsage: PlanUsage[];
+  initialPlan: ListingPlanName;
+  autoSelectionReason: AutoSelectionReason;
+  defaultListingPlan: ListingPlanName | null;
 }
+
+type FeedbackTone = "success" | "warning" | "error" | "info";
+
+const QUOTA_STORAGE_KEY = "jobvert:last-listing-plan";
 
 export function CreateJobForm({
   companyAbout,
-  companyLocation,    
+  companyLocation,
   companyLogo,
   companyXAccount,
   companyName,
   companyWebsite,
+  planUsage,
+  initialPlan,
+  autoSelectionReason,
+  defaultListingPlan,
 }: CreateJobFormProps) {
   const form = useForm<z.infer<typeof jobSchema>>({
     resolver: zodResolver(jobSchema),
@@ -70,24 +97,179 @@ export function CreateJobForm({
       salaryFrom: 0,
       salaryTo: 0,
       companyLogo: companyLogo,
-      listingPlan: "Bonsai",
+      listingPlan: initialPlan,
     },
-  });    
+  });
 
   const [pending, setPending] = useState(false);
+  const [usageState, setUsageState] = useState<PlanUsage[]>(planUsage);
+  const selectTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const currentPlan = form.watch("listingPlan") as ListingPlanName;
+
+  useEffect(() => {
+    setUsageState(planUsage);
+  }, [planUsage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const storedPlan = window.localStorage.getItem(QUOTA_STORAGE_KEY);
+    const allowedPlan = jobListingDurationPricing.some(
+      (plan) => plan.name === storedPlan
+    );
+
+    if (
+      storedPlan &&
+      allowedPlan &&
+      storedPlan !== initialPlan
+    ) {
+      const matchingUsage = planUsage.find((item) => item.plan === storedPlan);
+      if (matchingUsage && matchingUsage.remaining > 0) {
+        form.setValue("listingPlan", storedPlan as ListingPlanName);
+      }
+    }
+  }, [form, planUsage, initialPlan]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !currentPlan) {
+      return;
+    }
+    window.localStorage.setItem(QUOTA_STORAGE_KEY, currentPlan);
+  }, [currentPlan]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function refreshQuota() {
+      try {
+        const response = await fetch("/api/subscription/quota", {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          return;
+        }
+        const data = (await response.json()) as { planUsage?: PlanUsage[] };
+        if (isMounted && Array.isArray(data.planUsage)) {
+          setUsageState(data.planUsage);
+        }
+      } catch (error) {
+        console.error("Unable to refresh quota", error);
+      }
+    }
+
+    refreshQuota();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const currentPlanUsage = useMemo(
+    () => usageState.find((item) => item.plan === currentPlan),
+    [usageState, currentPlan]
+  );
+
+  const currentPlanMetadata = useMemo(
+    () => jobListingDurationPricing.find((plan) => plan.name === currentPlan),
+    [currentPlan]
+  );
+
+  const canPublish = currentPlanUsage ? currentPlanUsage.remaining > 0 : true;
+
+  const quotaFeedback = useMemo(() => {
+    if (!currentPlan || !currentPlanUsage || !currentPlanMetadata) {
+      return null;
+    }
+
+    if (!Number.isFinite(currentPlanUsage.limit)) {
+      return {
+        tone: "info" as FeedbackTone,
+        title: `Plan ${currentPlan} illimité`,
+        description: "Publiez autant d'offres que nécessaire avec ce plan.",
+      };
+    }
+
+    if (currentPlanUsage.remaining <= 0) {
+      return {
+        tone: "error" as FeedbackTone,
+        title: `Quota atteint pour ${currentPlan}`,
+        description:
+          "Vous avez utilisé toutes les offres incluses. Choisissez un autre plan ou contactez-nous pour augmenter votre quota.",
+      };
+    }
+
+    const percent =
+      currentPlanUsage.limit === 0
+        ? 1
+        : currentPlanUsage.used / currentPlanUsage.limit;
+
+    if (percent >= 0.8) {
+      return {
+        tone: "warning" as FeedbackTone,
+        title: `Plus que ${currentPlanUsage.remaining} offre${
+          currentPlanUsage.remaining === 1 ? "" : "s"
+        } avec ${currentPlan}`,
+        description: `Pensez à anticiper une mise à niveau : ce plan couvre ${currentPlanMetadata.jobLimit} offre${
+          currentPlanMetadata.jobLimit > 1 ? "s" : ""
+        } sur ${currentPlanMetadata.durationDays} jours.`,
+      };
+    }
+
+    return {
+      tone: "success" as FeedbackTone,
+      title: `Vous pouvez publier ${currentPlanUsage.remaining} nouvelle${
+        currentPlanUsage.remaining === 1 ? "" : "s"
+      } offre${currentPlanUsage.remaining === 1 ? "" : "s"} avec ${currentPlan}`,
+      description: `Visibilité ${
+        currentPlanMetadata.features[0] ?? "optimale"
+      } pendant ${currentPlanMetadata.durationDays} jours.`,
+    };
+  }, [currentPlan, currentPlanUsage, currentPlanMetadata]);
+
+  const selectionMessage = useMemo(() => {
+    if (!currentPlan) {
+      return "";
+    }
+
+    if (currentPlan === initialPlan) {
+      switch (autoSelectionReason) {
+        case "lastUsed":
+          return "Nous avons repris automatiquement le dernier abonnement utilisé.";
+        case "default":
+          return "Ce plan correspond à votre préférence définie dans le profil entreprise.";
+        default:
+          return "Choisissez l'abonnement le plus adapté pour chaque nouvelle offre.";
+      }
+    }
+
+    return "Plan ajusté manuellement pour cette offre.";
+  }, [autoSelectionReason, currentPlan, initialPlan]);
+
+  const quotaToneClasses: Record<FeedbackTone, string> = {
+    success: "border-green-200 bg-green-50 text-green-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-700",
+    error: "border-red-200 bg-red-50 text-red-700",
+    info: "border-blue-200 bg-blue-50 text-blue-700",
+  };
+
   async function onSubmit(values: z.infer<typeof jobSchema>) {
     try {
       setPending(true);
 
       await createJob(values);
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error) {
+      if (error instanceof Error && error.message === "JOB_LIMIT_REACHED") {
+        toast.error(
+          "Le quota de cet abonnement est atteint. Sélectionnez un autre plan ou contactez-nous pour l'augmenter."
+        );
+      } else {
+        toast.error("Une erreur est survenue. Veuillez réessayer.");
+      }
     } finally {
       setPending(false);
     }
   }
 
-  
   return (
     <Form {...form}>
       <form
@@ -395,38 +577,118 @@ export function CreateJobForm({
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Abonnements</CardTitle>
+          <CardHeader className="space-y-2">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <CardTitle>Abonnements</CardTitle>
+                <CardDescription>
+                  Retrouvez votre plan préféré et ajustez-le si besoin pour cette offre.
+                </CardDescription>
+              </div>
+              <Badge variant="secondary" className="w-fit">
+                Plan {currentPlan}
+              </Badge>
+            </div>
+            {selectionMessage ? (
+              <p className="text-xs text-muted-foreground">{selectionMessage}</p>
+            ) : null}
+            {defaultListingPlan && (
+              <p className="text-xs text-muted-foreground">
+                Préférence entreprise actuelle : {defaultListingPlan}
+              </p>
+            )}
           </CardHeader>
-          <CardContent>
-          <FormField
-  control={form.control}
-  name="listingPlan"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>Choisissez un abonnement</FormLabel>
-      <Select onValueChange={field.onChange} defaultValue={field.value}>
-        <FormControl>
-          <SelectTrigger>
-            <SelectValue placeholder="Sélectionner un abonnement" />
-          </SelectTrigger>
-        </FormControl>
-        <SelectContent>
-          {jobListingDurationPricing.map((plan) => (
-            <SelectItem key={plan.name} value={plan.name}>
-              {`${plan.name} – ${plan.jobLimit} job${plan.jobLimit > 1 ? "s" : ""} / ${plan.durationDays} jours – ${plan.priceMonthly}€`}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="listingPlan"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Choisissez un abonnement</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger ref={selectTriggerRef}>
+                        <SelectValue placeholder="Sélectionner un abonnement" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {jobListingDurationPricing.map((plan) => {
+                        const usage = usageState.find(
+                          (item) => item.plan === plan.name
+                        );
+                        const remaining = usage?.remaining ?? plan.jobLimit;
+                        return (
+                          <SelectItem key={plan.name} value={plan.name}>
+                            <div className="flex flex-col gap-1 text-sm">
+                              <span className="font-medium">{plan.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {plan.jobLimit} offre{plan.jobLimit > 1 ? "s" : ""} / {plan.durationDays} jours •
+                                {" "}
+                                {remaining} restante{remaining === 1 ? "" : "s"}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => selectTriggerRef.current?.click()}
+                    >
+                      Modifier
+                    </Button>
+                    <span>
+                      Le plan sélectionné détermine la visibilité, la durée et le quota disponible.
+                    </span>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {quotaFeedback ? (
+              <div
+                className={cn(
+                  "rounded-md border p-3 text-sm",
+                  quotaToneClasses[quotaFeedback.tone]
+                )}
+              >
+                <p className="font-medium">{quotaFeedback.title}</p>
+                <p className="text-xs mt-1">
+                  {quotaFeedback.description}{" "}
+                  {quotaFeedback.tone === "error" && (
+                    <Link href="/contact" className="underline">
+                      Augmenter mon plan
+                    </Link>
+                  )}
+                </p>
+              </div>
+            ) : null}
+
+            <PlanUsageSummary
+              planUsage={usageState}
+              highlightPlan={currentPlan}
+              title="Quota restant par abonnement"
+            />
           </CardContent>
         </Card>
-        <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? "Traitement..." : "Continuer"}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={pending || !canPublish}
+        >
+          {pending
+            ? "Traitement..."
+            : !canPublish
+              ? "Quota atteint - choisissez un autre plan"
+              : "Continuer"}
         </Button>
       </form>
     </Form>
