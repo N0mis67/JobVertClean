@@ -115,6 +115,7 @@ model Company {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   JobPost   JobPost[]
+  PlanCredits PlanCredit[]
 }
 
 model JobSeeker {
@@ -170,5 +171,20 @@ model SavedJobPost {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, jobId])
+}
+
+model PlanCredit {
+  id String @id @default(uuid())
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  plan ListingPlan
+
+  creditsPurchased Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, plan])
 }
 

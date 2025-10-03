@@ -5,6 +5,8 @@ export type PlanUsage = {
   used: number;
   limit: number;
   remaining: number;
+  bundleSize: number;
+  purchased: number;
 };
 
 export type AutoSelectionReason = "lastUsed" | "default" | "fallback";

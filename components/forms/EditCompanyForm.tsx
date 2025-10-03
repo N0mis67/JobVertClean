@@ -32,8 +32,11 @@ import { toast } from "sonner";
 import { companySchema } from "@/app/utils/zodSchemas";
 import { updateCompanyProfile } from "@/app/actions";
 import { countryList } from "@/app/utils/countriesList";
+import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
+import type { ListingPlan } from "@prisma/client";
 import type { ListingPlanName } from "@/types/subscription";
 
+const ALWAYS_ASK_VALUE = "always-ask";
 
 interface EditCompanyFormProps {
   company: {
@@ -43,7 +46,7 @@ interface EditCompanyFormProps {
     logo: string;
     website: string | null;
     xAccount: string | null;
-    defaultListingPlan: ListingPlanName | null;
+    defaultListingPlan: ListingPlan | null;
   };
 }
 
@@ -59,7 +62,7 @@ export function EditCompanyForm({ company }: EditCompanyFormProps) {
       logo: company.logo,
       website: company.website ?? "",
       xAccount: company.xAccount ?? "",
-      defaultListingPlan: company.defaultListingPlan,
+      defaultListingPlan: company.defaultListingPlan ?? null,
     },
   });
 
@@ -154,17 +157,22 @@ export function EditCompanyForm({ company }: EditCompanyFormProps) {
           />
         </div>
 
-         <FormField
+        <FormField
           control={form.control}
           name="defaultListingPlan"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Plan préféré pour vos futures offres</FormLabel>
               <Select
-                onValueChange={(value) =>
-                  field.onChange(value === "" ? null : (value as ListingPlanName))
-                }
-                defaultValue={field.value ?? ""}
+                onValueChange={(value) => {
+                  if (value === ALWAYS_ASK_VALUE) {
+                    field.onChange(null);
+                    return;
+                  }
+
+                  field.onChange(value as ListingPlanName);
+                }}
+                value={field.value ?? ALWAYS_ASK_VALUE}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -172,12 +180,14 @@ export function EditCompanyForm({ company }: EditCompanyFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">Toujours me demander</SelectItem>
+                  <SelectItem value={ALWAYS_ASK_VALUE}>Toujours me demander</SelectItem>
                   <SelectGroup>
                     <SelectLabel>Abonnements disponibles</SelectLabel>
-                    <SelectItem value="Bonsai">Bonsai</SelectItem>
-                    <SelectItem value="Arbuste">Arbuste</SelectItem>
-                    <SelectItem value="Forêt">Forêt</SelectItem>
+                    {jobListingDurationPricing.map((plan) => (
+                      <SelectItem key={plan.name} value={plan.name}>
+                        {plan.name}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>

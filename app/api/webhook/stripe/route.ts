@@ -1,5 +1,7 @@
 import { prisma } from "@/app/utils/db";
 import { stripe } from "@/app/utils/stripe";
+import { JobPostStatus } from "@prisma/client";
+import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 import { Resend } from "resend";
@@ -48,20 +50,56 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!company) {
+    if (!company || !company.Company?.id) {
       return new Response("Aucune entreprise trouvée", { status: 400});
     }
 
-    // Update the job post status to PUBLISHED
-    await prisma.jobPost.update({
-      where: {
-        id: jobId,
-        companyId: company?.Company?.id  // Ensure the job belongs to the user
-      },
-      data: {
-        status: "ACTIVE",
+     const job = await prisma.jobPost.findUnique({
+      where: { id: jobId },
+      select: {
+        companyId: true,
+        listingPlan: true,
       },
     });
+
+    if (!job || job.companyId !== company.Company.id) {
+      return new Response("Job introuvable pour ce client", { status: 400 });
+    }
+
+    const tier = jobListingDurationPricing.find(
+      (pricing) => pricing.name === job.listingPlan
+    );
+    const creditsToAdd = tier?.jobLimit ?? 0;
+
+    await prisma.$transaction([
+      prisma.planCredit.upsert({
+        where: {
+          companyId_plan: {
+            companyId: job.companyId,
+            plan: job.listingPlan,
+          },
+        },
+        update: {
+          creditsPurchased: {
+            increment: creditsToAdd,
+          },
+        },
+        create: {
+          companyId: job.companyId,
+          plan: job.listingPlan,
+          creditsPurchased: creditsToAdd,
+        },
+      }),
+      prisma.jobPost.update({
+        where: {
+          id: jobId,
+          companyId: company.Company.id,
+        },
+        data: {
+          status: JobPostStatus.ACTIVE,
+        },
+      }),
+    ]);
     const resend = new Resend(process.env.RESEND_API_KEY);
     const customerEmail = session.customer_details?.email ?? undefined;
 

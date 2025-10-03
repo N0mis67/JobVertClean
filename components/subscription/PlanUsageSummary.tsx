@@ -34,11 +34,15 @@ export function PlanUsageSummary({
           const percent = isUnlimited
             ? 0
             : item.limit === 0
-              ? 0
-              : Math.min(100, Math.round((item.used / item.limit) * 100));
+                ? 0
+                : Math.min(100, Math.round((item.used / item.limit) * 100));
 
           const plural = item.remaining === 1 ? "" : "s";
           const restanteSuffix = item.remaining === 1 ? "" : "s";
+          const packsPurchased = item.bundleSize
+            ? Math.ceil(item.purchased / item.bundleSize)
+            : 0;
+          const bundlePlural = item.bundleSize > 1 ? "s" : "";
 
           return (
             <div
@@ -65,7 +69,9 @@ export function PlanUsageSummary({
               <p className="mt-2 text-xs text-muted-foreground">
                 {isUnlimited
                   ? "Quota illimité disponible."
-                  : `${item.remaining} offre${plural} restante${restanteSuffix}.`}
+                  : item.purchased > 0
+                    ? `${item.remaining} offre${plural} restante${restanteSuffix}. Pack${packsPurchased > 1 ? "s" : ""} actifs : ${packsPurchased} × ${item.bundleSize} offre${bundlePlural}.`
+                    : `Aucun crédit actif. Chaque achat ajoute ${item.bundleSize} offre${bundlePlural}.`}
               </p>
             </div>
           );

@@ -17,15 +17,6 @@ export default async function CompanySettingsPage() {
     where: {
       userId: user.id as string,
     },
-    select: {
-      name: true,
-      location: true,
-      about: true,
-      logo: true,
-      website: true,
-      xAccount: true,
-      defaultListingPlan: true,
-    },
   });
 
   if (!company) {
@@ -49,7 +40,17 @@ export default async function CompanySettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EditCompanyForm company={company} />
+          <EditCompanyForm
+            company={{
+              name: company.name,
+              location: company.location,
+              about: company.about,
+              logo: company.logo,
+              website: company.website,
+              xAccount: company.xAccount,
+              defaultListingPlan: company.defaultListingPlan ?? null,
+            }}
+          />
         </CardContent>
       </Card>
     </div>

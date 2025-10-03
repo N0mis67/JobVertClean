@@ -156,19 +156,30 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
     throw new Error("Invalid listing plan selected");
   }
 
-  const activePosts = await prisma.jobPost.count({
-    where: {
-      companyId: company.id,
-      listingPlan: validatedData.listingPlan,
-      status: JobPostStatus.ACTIVE,
-    },
-  });
+  const [activePosts, planCredit] = await Promise.all([
+    prisma.jobPost.count({
+      where: {
+        companyId: company.id,
+        listingPlan: validatedData.listingPlan,
+        status: JobPostStatus.ACTIVE,
+      },
+    }),
+    prisma.planCredit.findUnique({
+      where: {
+        companyId_plan: {
+          companyId: company.id,
+          plan: validatedData.listingPlan,
+        },
+      },
+      select: {
+        creditsPurchased: true,
+      },
+    }),
+  ]);
 
-  if (activePosts >= pricingTier.jobLimit) {
-    throw new Error("Job limit reached for this plan");
-  }
-
-  const requiresPayment = activePosts === 0;
+  const purchasedCredits = planCredit?.creditsPurchased ?? 0;
+  const remainingCredits = Math.max(purchasedCredits - activePosts, 0);
+  const requiresPayment = remainingCredits <= 0;
 
   const jobPost = await prisma.jobPost.create({
     data: {
@@ -247,7 +258,7 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
       billing_address_collection: "required",
       metadata: {
         jobId: jobPost.id,
-
+        listingPlan: validatedData.listingPlan,
       },
       success_url: `${process.env.NEXT_PUBLIC_URL}/payment/success`,
       cancel_url: `${process.env.NEXT_PUBLIC_URL}/payment/cancel`,
