@@ -6,6 +6,10 @@ import { headers } from "next/headers";
 import Stripe from "stripe";
 import { Resend } from "resend";
 
+const resend =
+  process.env.RESEND_API_KEY !== undefined
+    ? new Resend(process.env.RESEND_API_KEY)
+    : undefined;
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -59,6 +63,8 @@ export async function POST(req: Request) {
       select: {
         companyId: true,
         listingPlan: true,
+        jobTitle: true,
+        location: true,
       },
     });
 
@@ -100,7 +106,6 @@ export async function POST(req: Request) {
         },
       }),
     ]);
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const customerEmail = session.customer_details?.email ?? undefined;
 
     // Retrieve invoice or receipt URL
@@ -143,7 +148,7 @@ export async function POST(req: Request) {
       console.error("Error retrieving subscription details:", err);
     }
 
-    if (customerEmail) {
+    if (customerEmail && resend) {
       try {
         await resend.emails.send({
           from: "JobVert <contact@jobvert.fr>",
@@ -159,6 +164,25 @@ export async function POST(req: Request) {
         });
       } catch (err) {
         console.error("Error sending confirmation email:", err);
+      }
+
+      if (job?.jobTitle) {
+        try {
+          await resend.emails.send({
+            from: "JobVert <contact@jobvert.fr>",
+            to: [customerEmail],
+            subject: "Votre offre d'emploi est en ligne",
+            html: `
+              <p>Bonjour,</p>
+              <p>Votre offre <strong>${job.jobTitle}</strong> est désormais publiée.</p>
+              <p>Plan sélectionné : ${job.listingPlan}</p>
+              ${job.location ? `<p>Lieu : ${job.location}</p>` : ""}
+              <p>Merci d'utiliser JobVert pour vos recrutements.</p>
+            `,
+          });
+        } catch (err) {
+          console.error("Error sending job publication email:", err);
+        }
       }
     }
   }

@@ -12,6 +12,12 @@ import arcjet, { detectBot, shield } from "./utils/arcjet";
 import { request } from "@arcjet/next";
 import { inngest } from "./utils/inngest/client";
 import { JobPostStatus } from "@prisma/client";
+import { Resend } from "resend";
+
+const resend =
+  process.env.RESEND_API_KEY !== undefined
+    ? new Resend(process.env.RESEND_API_KEY)
+    : undefined;
 
 
 const aj = arcjet
@@ -196,7 +202,24 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
     },
   });
 
-  
+   if (!requiresPayment && resend && user.email) {
+    try {
+      await resend.emails.send({
+        from: "JobVert <contact@jobvert.fr>",
+        to: [user.email],
+        subject: "Votre offre d'emploi est en ligne",
+        html: `
+          <p>Bonjour ${user.name ?? ""},</p>
+          <p>Votre offre <strong>${validatedData.jobTitle}</strong> est désormais publiée.</p>
+          <p>Plan sélectionné : ${validatedData.listingPlan}</p>
+          <p>Lieu : ${validatedData.location}</p>
+          <p>Merci d'utiliser JobVert pour vos recrutements.</p>
+        `,
+      });
+    } catch (error) {
+      console.error("Error sending job publication email:", error);
+    }
+  }
 
   // Trigger the job expiration function
   await inngest.send({

@@ -42,7 +42,6 @@ export async function Navbar() {
             </Link>
 
             <div className="hidden md:flex items-center gap-4">
-              <ThemeToggle />
               <Link href="/post-job" className= {buttonVariants({ size: "lg"})}>
                 Publier un job
               </Link>
@@ -63,7 +62,7 @@ export async function Navbar() {
             )}
             </div>
             <div className="md:hidden flex items-center gap-4">
-        <ThemeToggle />
+       
         {session?.user ? (
           <UserDropdown
             email={session.user.email as string}

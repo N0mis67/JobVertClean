@@ -6,9 +6,6 @@ import {
     CardTitle,
   } from "@/components/ui/card";
 import React from "react";
-import Image from "next/image";
-import ArcJetLogo from "@/public/arcjet.jpg";
-import InngestLogo from "@/public/inngest-locale.png";
 import { CreateJobForm } from "@/components/forms/CreateJobForm";
 import { prisma } from "@/app/utils/db";
 import { requireUser } from "@/app/utils/hook";
@@ -18,40 +15,52 @@ import {
   resolveInitialPlan,
 } from "@/app/utils/subscription";
 
-const companies = [
-  { id: 0, name: "ArcJet", logo: ArcJetLogo },
-  { id: 1, name: "Inngest", logo: InngestLogo },
-  { id: 2, name: "ArcJet", logo: ArcJetLogo },
-  { id: 3, name: "Inngest", logo: InngestLogo },
-  { id: 4, name: "ArcJet", logo: ArcJetLogo },
-  { id: 5, name: "Inngest", logo: InngestLogo },
-];
 
-const testimonials = [
+
+const advantages = [
   {
-    quote:
-      "J’ai posté une offre et reçu 3 candidatures qualifiées dans la journée.",
-    author: "Retour client"
+    title: "Candidats qualifiés",
+    description:
+      "Communauté exclusivement composée de professionnels du paysage\u00a0: jardiniers, \u00e9lagueurs, chefs d\u2019\u00e9quipe, architectes paysagistes, etc.",
+    stat: "100%",
+    statDescription: "d\u00e9di\u00e9 au secteur des espaces verts",
   },
   {
-    quote:
-      "The platform made hiring remote talent incredibly simple. Highly recommended!",
-    author: "Mark Johnson",
-    company: "StartupX",
+   title: "Recrutement rapide",
+    description:
+      "Recevez vos premi\u00e8res candidatures en moins de 48\u00a0h et pourvoyez jusqu\u2019\u00e0 80\u00a0% des postes en un mois.",
+    stat: "48\u00a0h",
+    statDescription: "pour obtenir vos premi\u00e8res candidatures",
   },
   {
-    quote:
-      "We've consistently found high-quality candidates here. It's our go-to platform for all our hiring needs.",
-    author: "Emily Rodriguez",
-    company: "InnovateNow",
+   title: "Visibilit\u00e9 cibl\u00e9e",
+    description:
+      "Vos offres sont vues par des centaines de professionnels actifs du secteur, pr\u00eats \u00e0 s\u2019engager.",
+    stat: "15\u00a0000+",
+    statDescription: "professionnels du paysage atteints",
+  },
+  {
+    title: "Simplicit\u00e9 & accompagnement",
+    description:
+      "Publiez une offre en 5\u00a0minutes. Interface intuitive et aide \u00e0 l\u2019optimisation de vos annonces.",
+    stat: "5\u00a0min",
+    statDescription: "pour mettre en ligne votre annonce",
   },
 ];
 
 const stats = [
-  { value: "10k+", label: "Monthly active job seekers" },
-  { value: "48h", label: "Average time to hire" },
-  { value: "95%", label: "Employer satisfaction rate" },
-  { value: "500+", label: "Companies hiring monthly" },
+  { value: "80%", label: "des postes pourvus en un mois" },
+  { value: "4,8/5", label: "de satisfaction recruteur" },
+  { value: "300+", label: "entreprises accompagn\u00e9es" },
+  { value: "10k+", label: "talents actifs chaque mois" },
+];
+
+const sectorRoles = [
+  "Jardinier / Ouvrier paysagiste",
+  "Chef d\u2019\u00e9quipe espaces verts",
+  "Architecte paysagiste",
+  "\u00c9lagueur-grimpeur",
+  "Horticulteur",
 ];
 
 async function getCompany(userId: string) {
@@ -105,45 +114,34 @@ const PostJobPage = async () => {
         <Card className="lg:sticky lg:top-4">
           <CardHeader>
             <CardTitle className="text-xl">
-            100% dédié aux métiers des espaces verts
+            Pourquoi publier vos offres sur <span className="text-primary">JobVert</span> ?
             </CardTitle>
             <CardDescription>
-            Rejoignez les entreprises qui recrutent les meilleurs talents
+              JobVert est la plateforme 100% dédiée à l’aménagement paysager. Recrutez plus
+              rapidement des candidats qualifiés grâce à une communauté engagée et un outil simple
+              d’utilisation.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Company Logos */}
-            <div className="grid grid-cols-3 gap-4">
-              {companies.map((company) => (
-                <div
-                  key={company.id}
-                  className="flex items-center justify-center"
-                >
-                  <Image
-                    src={company.logo}
-                    alt={company.name}
-                    height={80}
-                    width={80}
-                    className="opacity-75 transition-opacity hover:opacity-100 rounded-lg"
-                  />{" "}
-                </div>
-              ))}
-            </div>
 
-            {/* Testimonials */}
-            <div className="space-y-4">
-              {testimonials.map((testimonial, index) => (
-                <blockquote
+             {/* Advantages */}
+            <div className="space-y-6">
+              {advantages.map((advantage, index) => (
+                <div
                   key={index}
-                  className="border-l-2 border-primary pl-4"
+                  className="rounded-lg border border-muted-foreground/10 p-4"
                 >
-                  <p className="text-sm italic text-muted-foreground">
-                    "{testimonial.quote}"
+                  <h3 className="text-base font-semibold">{advantage.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {advantage.description}
                   </p>
-                  <footer className="mt-2 text-sm font-medium">
-                    - {testimonial.author}, {testimonial.company}
-                  </footer>
-                </blockquote>
+                  <div className="mt-3 flex items-baseline gap-2 text-primary">
+                    <span className="text-2xl font-bold">{advantage.stat}</span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {advantage.statDescription}
+                    </span>
+                  </div>
+                </div>
               ))}
             </div>
 
@@ -157,6 +155,14 @@ const PostJobPage = async () => {
                   </div>
                 </div>
               ))}
+            </div>
+
+          {/* Sector roles */}
+            <div className="rounded-lg border border-muted-foreground/10 p-4">
+              <h3 className="text-base font-semibold">Métiers représentés sur JobVert</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {sectorRoles.join(" • ")}
+              </p>
             </div>
           </CardContent>
         </Card>

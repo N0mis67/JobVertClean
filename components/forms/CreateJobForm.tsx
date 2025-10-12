@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,6 +67,13 @@ interface CreateJobFormProps {
 type FeedbackTone = "success" | "warning" | "error" | "info";
 
 const QUOTA_STORAGE_KEY = "jobvert:last-listing-plan";
+
+type QuotaFeedback = {
+  tone: FeedbackTone;
+  title: string;
+  description: string;
+  actions?: ReactNode;
+};
 
 export function CreateJobForm({
   companyAbout,
@@ -174,9 +180,16 @@ export function CreateJobForm({
     [currentPlan]
   );
 
-  const canPublish = currentPlanUsage ? currentPlanUsage.remaining > 0 : true;
+  const canPublish = currentPlanUsage
+    ? currentPlanUsage.remaining >= 0 || !Number.isFinite(currentPlanUsage.limit)
+    : true;
+  const isQuotaDepleted = Boolean(
+    currentPlanUsage &&
+      Number.isFinite(currentPlanUsage.limit) &&
+      currentPlanUsage.remaining <= 0
+  );
 
-  const quotaFeedback = useMemo(() => {
+  const quotaFeedback = useMemo<QuotaFeedback | null>(() => {
     if (!currentPlan || !currentPlanUsage || !currentPlanMetadata) {
       return null;
     }
@@ -194,7 +207,22 @@ export function CreateJobForm({
         tone: "error" as FeedbackTone,
         title: `Quota atteint pour ${currentPlan}`,
         description:
-          "Vous avez utilisé toutes les offres incluses. Choisissez un autre plan ou contactez-nous pour augmenter votre quota.",
+          "Vous avez utilisé toutes les offres incluses pour ce plan. Vous pouvez racheter cet abonnement ou sélectionner une autre formule pour continuer à publier.",
+        actions: (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button type="submit" size="sm" disabled={pending}>
+              Racheter le plan {currentPlan}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => selectTriggerRef.current?.click()}
+            >
+              Choisir un autre plan
+            </Button>
+          </div>
+        ),
       };
     }
 
@@ -224,7 +252,7 @@ export function CreateJobForm({
         currentPlanMetadata.features[0] ?? "optimale"
       } pendant ${currentPlanMetadata.durationDays} jours.`,
     };
-  }, [currentPlan, currentPlanUsage, currentPlanMetadata]);
+  }, [currentPlan, currentPlanUsage, currentPlanMetadata, pending]);
 
   const selectionMessage = useMemo(() => {
     if (!currentPlan) {
@@ -260,7 +288,7 @@ export function CreateJobForm({
     } catch (error) {
       if (error instanceof Error && error.message === "JOB_LIMIT_REACHED") {
         toast.error(
-          "Le quota de cet abonnement est atteint. Sélectionnez un autre plan ou contactez-nous pour l'augmenter."
+          "Votre quota est épuisé. Rachetez cet abonnement via le bouton Continuer ou choisissez-en un autre pour publier votre offre."
         );
       } else {
         toast.error("Une erreur est survenue. Veuillez réessayer.");
@@ -663,12 +691,8 @@ export function CreateJobForm({
                 <p className="font-medium">{quotaFeedback.title}</p>
                 <p className="text-xs mt-1">
                   {quotaFeedback.description}{" "}
-                  {quotaFeedback.tone === "error" && (
-                    <Link href="/contact" className="underline">
-                      Augmenter mon plan
-                    </Link>
-                  )}
                 </p>
+                {quotaFeedback.actions}
               </div>
             ) : null}
 
@@ -686,8 +710,8 @@ export function CreateJobForm({
         >
           {pending
             ? "Traitement..."
-            : !canPublish
-              ? "Quota atteint - choisissez un autre plan"
+            : isQuotaDepleted
+              ? "Continuer pour racheter ce plan"
               : "Continuer"}
         </Button>
       </form>
