@@ -2,7 +2,6 @@ import Link from "next/link";
 import leaf from "@/public/leaf.png"
 import Image from "next/image";
 import { Button, buttonVariants } from "../ui/button";
-import { ThemeToggle } from "./ThemeToggle";
 import { auth } from "@/app/utils/auth";
 import { Menu } from "lucide-react";
 import {
@@ -42,24 +41,32 @@ export async function Navbar() {
             </Link>
 
             <div className="hidden md:flex items-center gap-4">
-              <Link href="/post-job" className= {buttonVariants({ size: "lg"})}>
+              <Link href="/post-job" className={buttonVariants({ size: "lg" })}>
                 Publier un job
               </Link>
               {session?.user ? (
                 <UserDropdown
                 email={session.user.email as string}
-                name={session.user.name as string}
-                image={session.user.image as string}
-                companyId={companyId}
-              />
-            ) : (
-              <Link
-                href="/login"
-                className={buttonVariants({ variant: "outline", size: "lg"})}
-              >
-                Connexion
-              </Link>
-            )}
+                  name={session.user.name as string}
+                  image={session.user.image as string}
+                  companyId={companyId}
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/register"
+                    className={buttonVariants({ size: "lg" })}
+                  >
+                    Créer un compte
+                  </Link>
+                  <Link
+                    href="/login"
+                    className={buttonVariants({ variant: "outline", size: "lg" })}
+                  >
+                    Connexion
+                  </Link>
+                </div>
+              )}
             </div>
             <div className="md:hidden flex items-center gap-4">
        
@@ -99,6 +106,12 @@ export async function Navbar() {
                   className="text-lg px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors duration-200"
                 >
                   Publier un Job
+                </Link>
+                <Link
+                  href="/register"
+                  className="text-lg px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors duration-200"
+                >
+                  Créer un compte
                 </Link>
                 <Link
                   href="/login"

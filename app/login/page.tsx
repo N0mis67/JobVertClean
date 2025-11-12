@@ -14,8 +14,20 @@ export default function Login() {
                 </h1>
                 </Link>
 
-                <LoginForm />
-            </div>         
+                <LoginForm
+                  bottomSlot={
+                    <>
+                      Pas encore de compte ?{" "}
+                      <Link
+                        href="/register"
+                        className="font-medium text-primary hover:underline"
+                      >
+                        Créez-le gratuitement
+                      </Link>
+                    </>
+                  }
+                />
+            </div>       
         </div>
     );
 }
