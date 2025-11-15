@@ -1,17 +1,17 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import ResendProvider from "next-auth/providers/resend";
-import { Resend } from "resend";
+import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./db";
+import {
+  emailFromAddress,
+  ensureResendClient,
+  resendApiKey,
+} from "./email";
+import { verifyPassword } from "./password";
+import { z } from "zod";
 
-const resendApiKey = process.env.RESEND_API_KEY;
-
-const resendClient =
-  resendApiKey !== undefined ? new Resend(resendApiKey) : undefined;
-
-const emailFromAddress =
-  process.env.AUTH_EMAIL_FROM ?? "JobVert <onboarding@resend.dev>";
 
 function buildEmailHtml(url: string) {
   return `
@@ -32,6 +32,11 @@ function buildEmailText(url: string) {
   return `Bienvenue sur JobVert !\n\nCliquez sur le lien suivant pour confirmer votre adresse mail et finaliser la création de votre compte :\n${url}\n\nCe lien expirera dans 10 minutes.`;
 }
 
+const credentialsSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -40,13 +45,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       from: emailFromAddress,
       maxAge: 10 * 60,
       async sendVerificationRequest({ identifier, url }) {
-        if (!resendClient) {
-          throw new Error(
-            "RESEND_API_KEY doit être défini pour envoyer des liens de confirmation."
-          );
-        }
+          const resend = ensureResendClient();
 
-        const { error } = await resendClient.emails.send({
+        const { error } = await resend.emails.send({
           from: emailFromAddress,
           to: identifier,
           subject: "Confirmez votre adresse mail JobVert",
@@ -60,5 +61,40 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
     Google,
+     Credentials({
+      credentials: {
+        email: { label: "Adresse mail", type: "email" },
+        password: { label: "Mot de passe", type: "password" },
+      },
+      authorize: async (credentials) => {
+        const parsed = credentialsSchema.safeParse(credentials);
+
+        if (!parsed.success) {
+          return null;
+        }
+
+        const { email, password } = parsed.data;
+
+        const user = await prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (!user || !user.password) {
+          return null;
+        }
+
+        const isValidPassword = await verifyPassword(password, user.password);
+
+        if (!isValidPassword) {
+          return null;
+        }
+
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED");
+        }
+
+        return user;
+      },
+    }),
   ],
 });

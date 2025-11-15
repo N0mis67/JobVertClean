@@ -1,6 +1,5 @@
 "use client";
 
-import { useFormState } from "react-dom";
 import { requestEmailSignIn } from "@/app/login/actions";
 import type { EmailSignInState } from "@/app/login/actions";
 import { Input } from "../ui/input";

@@ -29,7 +29,9 @@ export function UserDropdown({ email, name, image, companyId}: UserDropdownProps
             <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
                 <Avatar>
                     <AvatarImage src={image} alt="Profile image"/>
-                    <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>
+                      {name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) ?? "?"}
+                    </AvatarFallback>
                 </Avatar>
                 <ChevronDown
                     size={16}

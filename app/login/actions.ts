@@ -9,12 +9,43 @@ export type EmailSignInState =
   | { status: "success"; message: string }
   | { status: "error"; message: string };
 
+  export type PasswordLoginState =
+  | { status: "idle" }
+  | { status: "error"; message: string };
+
 const emailSchema = z.object({
   email: z
     .string({ required_error: "L'adresse mail est obligatoire." })
     .trim()
     .email("Veuillez entrer une adresse mail valide."),
 });
+
+const passwordLoginSchema = z.object({
+  email: z
+    .string({ required_error: "L'adresse mail est obligatoire." })
+    .trim()
+    .email("Veuillez entrer une adresse mail valide."),
+  password: z
+    .string({ required_error: "Le mot de passe est obligatoire." })
+    .min(1, "Le mot de passe est obligatoire."),
+});
+
+function getAuthErrorCauseMessage(error: AuthError): string | undefined {
+  const cause = error.cause;
+
+  if (cause instanceof Error) {
+    return cause.message;
+  }
+
+  if (cause && typeof cause === "object" && "cause" in cause) {
+    const nestedCause = (cause as { cause?: unknown }).cause;
+    if (nestedCause instanceof Error) {
+      return nestedCause.message;
+    }
+  }
+
+  return undefined;
+}
 
 export async function requestEmailSignIn(
   _prevState: EmailSignInState,
@@ -63,5 +94,67 @@ export async function requestEmailSignIn(
       status: "error",
       message: "Une erreur inattendue est survenue. Veuillez réessayer.",
     };
+  }
+  }
+
+export async function loginWithPassword(
+  _prevState: PasswordLoginState,
+  formData: FormData,
+): Promise<PasswordLoginState> {
+  let validated: z.infer<typeof passwordLoginSchema>;
+
+  try {
+    validated = passwordLoginSchema.parse({
+      email: formData.get("email"),
+      password: formData.get("password"),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const firstIssue = error.issues.at(0);
+      return {
+        status: "error",
+        message: firstIssue?.message ?? "Veuillez vérifier vos identifiants.",
+      };
+    }
+
+    return {
+      status: "error",
+      message: "Impossible de vous connecter. Veuillez réessayer.",
+    };
+  }
+
+  try {
+    await signIn("credentials", {
+      email: validated.email,
+      password: validated.password,
+      redirectTo: "/onboarding",
+    });
+    return { status: "idle" };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      if (error.type === "CredentialsSignin") {
+        const causeMessage = getAuthErrorCauseMessage(error);
+
+        if (causeMessage === "EMAIL_NOT_VERIFIED") {
+          return {
+            status: "error",
+            message:
+              "Veuillez confirmer votre adresse mail avant de vous connecter.",
+          };
+        }
+
+        return {
+          status: "error",
+          message: "Adresse mail ou mot de passe incorrect.",
+        };
+      }
+
+      return {
+        status: "error",
+        message: "Impossible de vous connecter. Veuillez réessayer.",
+      };
+    }
+
+    throw error;
   }
 }

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import leaf from "@/public/leaf.png";
-import { LoginForm } from "@/components/forms/LoginForm";
+import { RegisterForm } from "@/components/forms/RegisterForms";
 
 export default function Register() {
   return (
@@ -13,24 +13,18 @@ export default function Register() {
             Job<span className="text-primary">Vert</span>
           </h1>
         </Link>
+        <RegisterForm />
 
-        <LoginForm
-          title="Créez votre compte JobVert"
-          description="Recevez un lien sécurisé par e-mail ou continuez avec Google pour accéder à la plateforme."
-          googleButtonText="Créer un compte avec Google"
-          emailSubmitText="Créer un compte avec mon e-mail"
-          bottomSlot={
-            <>
-              Vous avez déjà un compte ?{" "}
-              <Link
-                href="/login"
-                className="font-medium text-primary hover:underline"
-              >
-                Connectez-vous
-              </Link>
-            </>
-          }
-        />
+        <div className="text-center text-sm text-muted-foreground [&_a]">
+          Vous avez déjà un compte ?{" "}
+          <Link
+            href="/login"
+            className="font-medium text-primary hover:underline"
+          >
+            Connectez-vous
+          </Link>
+        </div>
+        
       </div>
     </div>
   );
