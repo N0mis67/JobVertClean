@@ -1,5 +1,3 @@
-import { signIn } from "@/app/utils/auth";
-import { EmailSignUpForm } from "./EmailSignUpForm";
 import { PasswordLoginForm } from "./PasswordLoginForm";
 import { GeneralSubmitButton } from "../general/SubmitButtons";
 import {
@@ -11,6 +9,7 @@ import {
 } from "../ui/card";
 import type { ReactNode } from "react";
 import { GoogleIcon } from "../icons/GoogleIcon";
+import { signInWithGoogle } from "@/app/utils/auth-actions";
 
 type LoginFormProps = {
   title?: string;
@@ -36,15 +35,7 @@ export function LoginForm({
         </CardHeader>
         <CardContent>
           <div className="grid gap-6">
-            <form
-              action={async () => {
-                "use server";
-                await signIn("google", {
-                  redirectTo: "/onboarding",
-                });
-              }}
-              className="flex flex-col gap-4"
-            >
+           <form action={signInWithGoogle} className="flex flex-col gap-4">
               <GeneralSubmitButton
                 text={googleButtonText}
                 icon={<GoogleIcon />}
@@ -63,13 +54,6 @@ export function LoginForm({
               </div>
             </div>
             <PasswordLoginForm />
-
-            <div className="rounded-lg border border-dashed p-4 text-sm">
-              <p className="mb-3 text-muted-foreground">
-                Vous préférez recevoir un lien magique ?
-              </p>
-              <EmailSignUpForm submitLabel={emailSubmitText} />
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -83,7 +67,7 @@ export function LoginForm({
         <div className="text-center text-sm text-muted-foreground [&_a]">
           {bottomSlot}
         </div>
-        ) : null}
+      ) : null}
     </div>
   );
 }

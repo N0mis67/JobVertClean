@@ -94,7 +94,7 @@ export async function requestEmailSignIn(
       status: "error",
       message: "Une erreur inattendue est survenue. Veuillez réessayer.",
     };
-  }
+   }
   }
 
 export async function loginWithPassword(

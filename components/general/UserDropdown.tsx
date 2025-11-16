@@ -1,4 +1,4 @@
-import { signOut } from "@/app/utils/auth";
+import { signOutToHome } from "@/app/utils/auth-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,12 +104,7 @@ export function UserDropdown({ email, name, image, companyId}: UserDropdownProps
 
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/" });
-            }}
-          >
+          <form action={signOutToHome}>
             <button type="submit" className="w-full flex items-center gap-2">
               <LogOut
                 size={16}

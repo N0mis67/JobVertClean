@@ -54,12 +54,6 @@ export async function Navbar() {
               ) : (
                 <div className="flex items-center gap-2">
                   <Link
-                    href="/register"
-                    className={buttonVariants({ size: "lg" })}
-                  >
-                    Créer un compte
-                  </Link>
-                  <Link
                     href="/login"
                     className={buttonVariants({ variant: "outline", size: "lg" })}
                   >
@@ -106,12 +100,6 @@ export async function Navbar() {
                   className="text-lg px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors duration-200"
                 >
                   Publier un Job
-                </Link>
-                <Link
-                  href="/register"
-                  className="text-lg px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors duration-200"
-                >
-                  Créer un compte
                 </Link>
                 <Link
                   href="/login"
