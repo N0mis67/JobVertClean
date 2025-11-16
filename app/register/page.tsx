@@ -14,7 +14,7 @@ export default function Register() {
           </h1>
         </Link>
         <RegisterForm />
-
+        
         <div className="text-center text-sm text-muted-foreground [&_a]">
           Vous avez déjà un compte ?{" "}
           <Link
@@ -24,7 +24,6 @@ export default function Register() {
             Connectez-vous
           </Link>
         </div>
-        
       </div>
     </div>
   );

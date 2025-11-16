@@ -62,39 +62,66 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
     Google,
      Credentials({
-      credentials: {
-        email: { label: "Adresse mail", type: "email" },
-        password: { label: "Mot de passe", type: "password" },
-      },
-      authorize: async (credentials) => {
-        const parsed = credentialsSchema.safeParse(credentials);
+  credentials: {
+    email: { label: "Adresse mail", type: "email" },
+    password: { label: "Mot de passe", type: "password" },
+  },
+  authorize: async (credentials) => {
+    const parsed = credentialsSchema.safeParse(credentials);
 
-        if (!parsed.success) {
-          return null;
-        }
+    if (!parsed.success) {
+      return null;
+    }
 
-        const { email, password } = parsed.data;
+    const { email, password } = parsed.data;
 
-        const user = await prisma.user.findUnique({
-          where: { email },
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || !user.password) {
+      return null;
+    }
+
+    if (!user.emailVerified) {
+      throw new Error("EMAIL_NOT_VERIFIED");
+    }
+
+    // Vérifier le mot de passe (utilise bcrypt ou ta librairie)
+    const isValidPassword = await verifyPassword(password, user.password);
+    
+    if (!isValidPassword) {
+      return null;
+    }
+
+    // ✅ RETOURNER L'UTILISATEUR
+    return user;
+  },
+}),
+  ],
+  callbacks: {
+    async session({ session, user }) {
+      if (!session.user) {
+        return session;
+      }
+
+      if (user) {
+        session.user.id = user.id;
+        return session;
+      }
+
+      if (!session.user.id && session.user.email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: { id: true },
         });
 
-        if (!user || !user.password) {
-          return null;
+        if (existingUser) {
+          session.user.id = existingUser.id;
         }
+      }
 
-        const isValidPassword = await verifyPassword(password, user.password);
-
-        if (!isValidPassword) {
-          return null;
-        }
-
-        if (!user.emailVerified) {
-          throw new Error("EMAIL_NOT_VERIFIED");
-        }
-
-        return user;
-      },
-    }),
-  ],
+      return session;
+    },
+  },
 });

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
 import { signIn } from "@/app/utils/auth";
 
 export type EmailSignInState =
@@ -9,7 +10,7 @@ export type EmailSignInState =
   | { status: "success"; message: string }
   | { status: "error"; message: string };
 
-  export type PasswordLoginState =
+export type PasswordLoginState =
   | { status: "idle" }
   | { status: "error"; message: string };
 
@@ -17,6 +18,7 @@ const emailSchema = z.object({
   email: z
     .string({ required_error: "L'adresse mail est obligatoire." })
     .trim()
+    .toLowerCase()
     .email("Veuillez entrer une adresse mail valide."),
 });
 
@@ -24,6 +26,7 @@ const passwordLoginSchema = z.object({
   email: z
     .string({ required_error: "L'adresse mail est obligatoire." })
     .trim()
+    .toLowerCase()
     .email("Veuillez entrer une adresse mail valide."),
   password: z
     .string({ required_error: "Le mot de passe est obligatoire." })
@@ -94,8 +97,8 @@ export async function requestEmailSignIn(
       status: "error",
       message: "Une erreur inattendue est survenue. Veuillez réessayer.",
     };
-   }
   }
+}
 
 export async function loginWithPassword(
   _prevState: PasswordLoginState,
@@ -124,12 +127,29 @@ export async function loginWithPassword(
   }
 
   try {
-    await signIn("credentials", {
+    const result = await signIn("credentials", {
       email: validated.email,
       password: validated.password,
+      redirect: false,
       redirectTo: "/onboarding",
     });
-    return { status: "idle" };
+
+    if (
+      result &&
+      typeof result === "object" &&
+      "error" in result &&
+      result.error
+    ) {
+      return {
+        status: "error",
+        message:
+          result.error === "EMAIL_NOT_VERIFIED"
+            ? "Veuillez confirmer votre adresse mail avant de vous connecter."
+            : "Adresse mail ou mot de passe incorrect.",
+      } satisfies PasswordLoginState;
+    }
+
+    redirect("/onboarding");
   } catch (error) {
     if (error instanceof AuthError) {
       if (error.type === "CredentialsSignin") {

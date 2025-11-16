@@ -17,7 +17,7 @@ export default function Login() {
                 <LoginForm
                   bottomSlot={
                     <>
-                      Pas encore de compte ?{" "}
+                      Vous n&apos;avez pas de compte ?{" "}
                       <Link
                         href="/register"
                         className="font-medium text-primary hover:underline"
@@ -27,7 +27,7 @@ export default function Login() {
                     </>
                   }
                 />
-            </div>       
+            </div>
         </div>
     );
 }

@@ -33,7 +33,7 @@ export function PasswordLoginForm() {
           name="password"
           type="password"
           autoComplete="current-password"
-          placeholder="••••••••"
+          placeholder="••••••••••••"
           required
         />
       </div>
