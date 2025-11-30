@@ -23,7 +23,6 @@ export function LoginForm({
   title = "Heureux de vous revoir",
   description = "Connectez-vous avec Google, votre mot de passe ou recevez un lien sécurisé par e-mail.",
   googleButtonText = "Continuer avec Google",
-  emailSubmitText = "Recevoir un lien de connexion",
   bottomSlot,
 }: LoginFormProps = {}) {
   return (

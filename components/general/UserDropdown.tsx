@@ -11,37 +11,54 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-  import { Building2, ChevronDown, Heart, Layers2, LogOut, Settings2 } from "lucide-react";
+import { Building2, ChevronDown, Heart, Layers2, LogOut, Settings2 } from "lucide-react";
 import Link from "next/link";
 
-interface UserDropdownProps  {
+interface UserDropdownProps {
   email: string;
   name: string;
-  image: string;
+  image?: string | null;
+  companyLogo?: string | null;
+  companyName?: string | null;
   companyId?: string | null;
 }
 
+export function UserDropdown({
+  email,
+  name,
+  image,
+  companyLogo,
+  companyName,
+  companyId,
+}: UserDropdownProps) {
+  const displayName = companyName?.trim().length ? companyName : name;
+  const fallbackText = displayName
+    ? displayName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "?";
+  const avatarSrc = companyLogo ?? image ?? undefined;
 
-export function UserDropdown({ email, name, image, companyId}: UserDropdownProps) {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
-                <Avatar>
-                    <AvatarImage src={image} alt="Profile image"/>
-                    <AvatarFallback>
-                      {name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) ?? "?"}
-                    </AvatarFallback>
-                </Avatar>
-                <ChevronDown
-                    size={16}
-                    strokeWidth={2}
-                    className="ms-2 opacity-60"
-                    aria-hidden="true"
-                />
-            </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-48" align="end">
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
+          <Avatar>
+            <AvatarImage src={avatarSrc} alt="Profile image" />
+            <AvatarFallback>{fallbackText}</AvatarFallback>
+          </Avatar>
+          <ChevronDown
+            size={16}
+            strokeWidth={2}
+            className="ms-2 opacity-60"
+            aria-hidden="true"
+          />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-48" align="end">
         <DropdownMenuLabel className="flex min-w-0 flex-col">
           <span className="truncate text-sm font-medium text-foreground">
             {name}
@@ -118,7 +135,7 @@ export function UserDropdown({ email, name, image, companyId}: UserDropdownProps
         </DropdownMenuItem>
       </DropdownMenuContent>
         
-      </DropdownMenu>
+    </DropdownMenu>
 
-    )
+  );
 }

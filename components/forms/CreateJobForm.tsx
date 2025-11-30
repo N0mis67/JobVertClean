@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -17,10 +18,6 @@ import type {
   ListingPlanName,
   PlanUsage,
 } from "@/types/subscription";
-import BenefitsSelector from "../general/BenefitsSelector";
-import { UploadDropzone } from "../general/UploadThingReExport";
-import { SalaryRangeSelector } from "../general/SalaryRangeSelector";
-import JobDescriptionEditor from "../richTextEditor/JobDescriptionEditor";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -50,6 +47,44 @@ import {
 } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { PlanUsageSummary } from "../subscription/PlanUsageSummary";
+
+const BenefitsSelector = dynamic(() => import("../general/BenefitsSelector"), {
+  ssr: false,
+  loading: () => <div className="h-10 rounded-md bg-muted animate-pulse" />,
+});
+
+const UploadDropzone = dynamic(
+  () =>
+    import("../general/UploadThingReExport").then(
+      (mod) => mod.UploadDropzone
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-20 items-center justify-center rounded-md border border-dashed border-muted-foreground/50 bg-muted/30 text-sm text-muted-foreground">
+        Préparation de l'upload...
+      </div>
+    ),
+  }
+);
+
+const SalaryRangeSelector = dynamic(
+  () => import("../general/SalaryRangeSelector").then((mod) => mod.SalaryRangeSelector),
+  {
+    ssr: false,
+    loading: () => <div className="h-12 rounded-md bg-muted animate-pulse" />,
+  }
+);
+
+const JobDescriptionEditor = dynamic(
+  () => import("../richTextEditor/JobDescriptionEditor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[360px] rounded-lg border bg-muted animate-pulse" />
+    ),
+  }
+);
 
 interface CreateJobFormProps {
   companyName: string;
@@ -108,14 +143,10 @@ export function CreateJobForm({
   });
 
   const [pending, setPending] = useState(false);
-  const [usageState, setUsageState] = useState<PlanUsage[]>(planUsage);
+  const [deferHeavyFields, setDeferHeavyFields] = useState(false);
   const selectTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const currentPlan = form.watch("listingPlan") as ListingPlanName;
-
-  useEffect(() => {
-    setUsageState(planUsage);
-  }, [planUsage]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -146,33 +177,27 @@ export function CreateJobForm({
   }, [currentPlan]);
 
   useEffect(() => {
-    let isMounted = true;
-    async function refreshQuota() {
-      try {
-        const response = await fetch("/api/subscription/quota", {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          return;
-        }
-        const data = (await response.json()) as { planUsage?: PlanUsage[] };
-        if (isMounted && Array.isArray(data.planUsage)) {
-          setUsageState(data.planUsage);
-        }
-      } catch (error) {
-        console.error("Unable to refresh quota", error);
-      }
+    if (typeof window === "undefined") {
+      return;
     }
 
-    refreshQuota();
+    const handle =
+      typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback(() => setDeferHeavyFields(true))
+        : window.setTimeout(() => setDeferHeavyFields(true), 250);
+
     return () => {
-      isMounted = false;
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(handle as number);
+      } else {
+        clearTimeout(handle as number);
+      }
     };
   }, []);
 
-  const currentPlanUsage = useMemo(
-    () => usageState.find((item) => item.plan === currentPlan),
-    [usageState, currentPlan]
+    const currentPlanUsage = useMemo(
+    () => planUsage.find((item) => item.plan === currentPlan),
+    [planUsage, currentPlan]
   );
 
   const currentPlanMetadata = useMemo(
@@ -344,7 +369,7 @@ export function CreateJobForm({
                           <SelectItem value="Temps plein">Temps plein</SelectItem>
                           <SelectItem value="Temps partiel">Temps partiel</SelectItem>
                           <SelectItem value="Intérim">Intérim</SelectItem>
-                          <SelectItem value="apprentissage">Stage/apprentissage</SelectItem>
+                          <SelectItem value="apprentissage">Stage/Apprenti</SelectItem>
                         </SelectGroup>
                       </SelectContent>
                     </Select>
@@ -392,11 +417,15 @@ export function CreateJobForm({
               <FormItem>
                 <FormLabel>Échelle salariale</FormLabel>
                 <FormControl>
-                  <SalaryRangeSelector
-                    control={form.control}
-                    minSalary={22000}
-                    maxSalary={200000}
-                  />
+                  {deferHeavyFields ? (
+                    <SalaryRangeSelector
+                      control={form.control}
+                      minSalary={22000}
+                      maxSalary={200000}
+                    />
+                  ) : (
+                    <div className="h-12 rounded-md bg-muted animate-pulse" />
+                  )}
                 </FormControl>
                 <FormMessage>
                   {form.formState.errors.salaryFrom?.message ||
@@ -411,13 +440,17 @@ export function CreateJobForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
-                  <FormControl>
+                <FormControl>
+                  {deferHeavyFields ? (
                     <JobDescriptionEditor field={field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  ) : (
+                    <div className="h-[360px] rounded-lg border bg-muted animate-pulse" />
+                  )}
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
             <FormField
               control={form.control}
@@ -425,11 +458,15 @@ export function CreateJobForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Avantages</FormLabel>
-                  <FormControl>
+                <FormControl>
+                  {deferHeavyFields ? (
                     <BenefitsSelector field={field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                  ) : (
+                    <div className="h-10 rounded-md bg-muted animate-pulse" />
+                  )}
+                </FormControl>
+                <FormMessage />
+              </FormItem>
               )}
             />
           </CardContent>
@@ -581,7 +618,7 @@ export function CreateJobForm({
                             <XIcon className="h-4 w-4" />
                           </Button>
                         </div>
-                      ) : (
+                      ) : deferHeavyFields ? (
                         <UploadDropzone
                           endpoint="imageUploader"
                           onClientUploadComplete={(res) => {
@@ -594,6 +631,10 @@ export function CreateJobForm({
                             );
                           }}
                         />
+                        ) : (
+                        <div className="flex h-20 items-center justify-center rounded-md border border-dashed border-muted-foreground/50 bg-muted/30 text-sm text-muted-foreground">
+                          Préparation de l'upload...
+                        </div>
                       )}
                     </div>
                   </FormControl>
@@ -644,7 +685,7 @@ export function CreateJobForm({
                     </FormControl>
                     <SelectContent>
                       {jobListingDurationPricing.map((plan) => {
-                        const usage = usageState.find(
+                        const usage = planUsage.find(
                           (item) => item.plan === plan.name
                         );
                         const remaining = usage?.remaining ?? plan.jobLimit;
@@ -697,7 +738,7 @@ export function CreateJobForm({
             ) : null}
 
             <PlanUsageSummary
-              planUsage={usageState}
+              planUsage={planUsage}
               highlightPlan={currentPlan}
               title="Quota restant par abonnement"
             />

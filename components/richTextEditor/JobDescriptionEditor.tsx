@@ -3,14 +3,16 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import TextAlign from "@tiptap/extension-text-align";
-import Typography from "@tiptap/extension-typography";
 import { useEffect } from "react";
-import { MenuBar } from "./MenuBar"  ;
+import { MenuBar } from "./MenuBar";
 
+type EditorField = {
+    value: string;
+    onChange: (value: string) => void;
+};
 
 interface JobDescriptionEditorProps {
-    field: any;
+    field: EditorField;
 }
 
 export default function JobDescriptionEditor({
@@ -22,10 +24,6 @@ export default function JobDescriptionEditor({
             Link.configure({
                 openOnClick: false,
             }),
-            TextAlign.configure({
-                types: ["heading", "paragraph"],
-            }),
-            Typography,
         ],
         editorProps: {
             attributes: {

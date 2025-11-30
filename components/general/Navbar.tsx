@@ -18,6 +18,8 @@ import { prisma} from "@/app/utils/db";
 export async function Navbar() {
   const session = await auth();
   let companyId: string | null = null;
+  let companyLogo: string | null = null;
+  let companyName: string | null = null;
 
   if (session?.user?.id) {
     const company = await prisma.company.findUnique({
@@ -26,10 +28,14 @@ export async function Navbar() {
       },
       select: {
         id: true,
+        logo: true,
+        name: true,
       },
     });
 
     companyId = company?.id ?? null;
+    companyLogo = company?.logo ?? null;
+    companyName = company?.name ?? null;
   }
     return (
         <nav className="flex items-center justify-between py-5">
@@ -48,7 +54,9 @@ export async function Navbar() {
                 <UserDropdown
                 email={session.user.email as string}
                   name={session.user.name as string}
-                  image={session.user.image as string}
+                  image={session.user.image}
+                  companyLogo={companyLogo}
+                  companyName={companyName}
                   companyId={companyId}
                 />
               ) : (
@@ -68,7 +76,9 @@ export async function Navbar() {
           <UserDropdown
             email={session.user.email as string}
             name={session.user.name as string}
-            image={session.user.image as string}
+            image={session.user.image}
+            companyLogo={companyLogo}
+            companyName={companyName}
             companyId={companyId}
           />
         ) : (

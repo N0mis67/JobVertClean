@@ -140,7 +140,7 @@ export function EditJobForm({ jobPost }: iAppProps) {
                           <SelectItem value="Temps plein">Temps plein</SelectItem>
                           <SelectItem value="Temps partiel">Temps partiel</SelectItem>
                           <SelectItem value="Intérim">Intérim</SelectItem>
-                          <SelectItem value="Apprentissage">Stage/Apprentissage</SelectItem>
+                          <SelectItem value="apprentissage">Stage/Apprenti</SelectItem>
                         </SelectGroup>
                       </SelectContent>
                     </Select>

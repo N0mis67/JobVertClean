@@ -185,7 +185,9 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
 
   const purchasedCredits = planCredit?.creditsPurchased ?? 0;
   const remainingCredits = Math.max(purchasedCredits - activePosts, 0);
-  const requiresPayment = remainingCredits <= 0;
+  //const requiresPayment = remainingCredits <= 0;
+  const freeMode = process.env.NEXT_PUBLIC_FREE_POSTING === "true";
+  const requiresPayment = !freeMode && remainingCredits <= 0;
 
   const jobPost = await prisma.jobPost.create({
     data: {
@@ -238,6 +240,10 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
   revalidatePath("/post-job");
   revalidatePath("/my-jobs");
   revalidatePath("/payment/success");
+
+  if (freeMode) {
+    return redirect("/payment/success");
+  }
  
   if (requiresPayment) {
     let stripeCustomerId = company.user.stripeCustomerId;

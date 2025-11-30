@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google";
 import ResendProvider from "next-auth/providers/resend";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { UserType } from "@prisma/client";
 import { prisma } from "./db";
 import {
   emailFromAddress,
@@ -37,8 +38,16 @@ const credentialsSchema = z.object({
   password: z.string().min(1),
 });
 
+type TokenWithFlags = {
+  onboardingCompleted?: boolean;
+  userType?: UserType | null;
+};
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
+  session: {
+    strategy: "jwt",
+  },
   providers: [
     ResendProvider({
       apiKey: resendApiKey ?? "",
@@ -61,66 +70,75 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
     Google,
-     Credentials({
-  credentials: {
-    email: { label: "Adresse mail", type: "email" },
-    password: { label: "Mot de passe", type: "password" },
-  },
-  authorize: async (credentials) => {
-    const parsed = credentialsSchema.safeParse(credentials);
+    Credentials({
+      credentials: {
+        email: { label: "Adresse mail", type: "email" },
+        password: { label: "Mot de passe", type: "password" },
+      },
+      authorize: async (credentials) => {
+        const parsed = credentialsSchema.safeParse(credentials);
+        if (!parsed.success) {
+          return null;
+        }
+          const { email, password } = parsed.data;
+          const user = await prisma.user.findUnique({
+          where: { email },
+        });
+        if (!user || !user.password) {
+          return null;
+        }
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED");
+        }
+        const isValidPassword = await verifyPassword(password, user.password);
+        if (!isValidPassword) {
+          return null;
+        }
 
-    if (!parsed.success) {
-      return null;
-    }
-
-    const { email, password } = parsed.data;
-
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user || !user.password) {
-      return null;
-    }
-
-    if (!user.emailVerified) {
-      throw new Error("EMAIL_NOT_VERIFIED");
-    }
-
-    // Vérifier le mot de passe (utilise bcrypt ou ta librairie)
-    const isValidPassword = await verifyPassword(password, user.password);
-    
-    if (!isValidPassword) {
-      return null;
-    }
-
-    // ✅ RETOURNER L'UTILISATEUR
-    return user;
-  },
-}),
+        return user;
+      },
+    }),
   ],
   callbacks: {
-    async session({ session, user }) {
+    async jwt({ token, user }) {
+      const enrichedToken = token as typeof token & TokenWithFlags;
+
+      if (user) {
+        enrichedToken.id = user.id;
+        enrichedToken.onboardingCompleted = user.onboardingCompleted;
+        enrichedToken.userType = user.userType;
+        return enrichedToken;
+      }
+      if (enrichedToken.sub && enrichedToken.onboardingCompleted === undefined) {
+          const existingUser = await prisma.user.findUnique({
+          where: { id: enrichedToken.sub },
+          select: {
+            onboardingCompleted: true,
+            userType: true,
+          },
+        });
+
+        if (existingUser) {
+          enrichedToken.onboardingCompleted = existingUser.onboardingCompleted;
+          enrichedToken.userType = existingUser.userType;
+        }
+      }
+
+      return enrichedToken;
+    },
+    async session({ session, token }) {
       if (!session.user) {
         return session;
       }
 
-      if (user) {
-        session.user.id = user.id;
-        return session;
+      const enrichedToken = token as typeof token & TokenWithFlags;
+
+      if (token.sub) {
+        session.user.id = token.sub;
       }
 
-      if (!session.user.id && session.user.email) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: session.user.email },
-          select: { id: true },
-        });
-
-        if (existingUser) {
-          session.user.id = existingUser.id;
-        }
-      }
-
+      session.user.onboardingCompleted = enrichedToken.onboardingCompleted ?? false;
+      session.user.userType = enrichedToken.userType ?? null;
       return session;
     },
   },

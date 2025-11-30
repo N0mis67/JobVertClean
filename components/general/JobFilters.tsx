@@ -19,7 +19,12 @@ import { countryList } from "@/app/utils/countriesList";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
-const jobTypes = ["Temps plein", "Temps partiel", "intérimaire", "stagiaire/apprentissage"];
+const jobTypes = [
+  { label: "Temps plein", value: "Temps plein" },
+  { label: "Temps partiel", value: "Temps partiel" },
+  { label: "Intérim", value: "Intérim" },
+  { label: "Stage/Apprenti", value: "apprentissage" },
+];
 
 export function JobFilters() {
   const router = useRouter();
@@ -90,13 +95,13 @@ export function JobFilters() {
               <div key={index} className="flex items-center space-x-2">
                 <Checkbox
                   onCheckedChange={(checked) => {
-                    handleJobTypeChange(job, checked as boolean);
+                    handleJobTypeChange(job.value, checked as boolean);
                   }}
-                  id={job}
-                  checked={currentJobTypes.includes(job)}
+                  id={job.value}
+                  checked={currentJobTypes.includes(job.value)}
                 />
-                <Label className="text-sm font-medium" htmlFor={job}>
-                  {job}
+                <Label className="text-sm font-medium" htmlFor={job.value}>
+                  {job.label}
                 </Label>
               </div>
             ))}

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { signIn } from "@/app/utils/auth";
+import { prisma } from "@/app/utils/db";
 
 export type EmailSignInState =
   | { status: "idle" }
@@ -13,6 +14,21 @@ export type EmailSignInState =
 export type PasswordLoginState =
   | { status: "idle" }
   | { status: "error"; message: string };
+
+  async function getPostLoginRedirect(email: string): Promise<string> {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: {
+      onboardingCompleted: true,
+    },
+  });
+
+  if (!user) {
+    return "/onboarding";
+  }
+
+  return user.onboardingCompleted ? "/" : "/onboarding";
+}
 
 const emailSchema = z.object({
   email: z
@@ -32,6 +48,26 @@ const passwordLoginSchema = z.object({
     .string({ required_error: "Le mot de passe est obligatoire." })
     .min(1, "Le mot de passe est obligatoire."),
 });
+
+function extractErrorFromRedirectUrl(value: string): string | null {
+  const queryStart = value.indexOf("?");
+
+  if (queryStart === -1) {
+    return null;
+  }
+
+  const params = new URLSearchParams(value.slice(queryStart + 1));
+  return params.get("error");
+}
+
+function toRelativeRedirect(value: string): string {
+  try {
+    const url = new URL(value);
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch (error) {
+    return value.startsWith("/") ? value : "/onboarding";
+  }
+}
 
 function getAuthErrorCauseMessage(error: AuthError): string | undefined {
   const cause = error.cause;
@@ -134,22 +170,42 @@ export async function loginWithPassword(
       redirectTo: "/onboarding",
     });
 
-    if (
-      result &&
-      typeof result === "object" &&
-      "error" in result &&
-      result.error
-    ) {
-      return {
-        status: "error",
-        message:
-          result.error === "EMAIL_NOT_VERIFIED"
-            ? "Veuillez confirmer votre adresse mail avant de vous connecter."
-            : "Adresse mail ou mot de passe incorrect.",
-      } satisfies PasswordLoginState;
+    // signIn can return a string or an object with a `url` property; handle both cases
+    if (typeof result === "string") {
+      const errorCode = extractErrorFromRedirectUrl(result);
+
+      if (errorCode) {
+        return {
+          status: "error",
+          message:
+            errorCode === "CredentialsSignin"
+              ? "Adresse mail ou mot de passe incorrect."
+              : "Impossible de vous connecter. Veuillez réessayer.",
+        };
+      }
+
+      redirect(toRelativeRedirect(result));
     }
 
-    redirect("/onboarding");
+    if (result && typeof result === "object" && "url" in result && result.url) {
+      const errorCode = extractErrorFromRedirectUrl(result.url);
+
+      if (errorCode) {
+        return {
+          status: "error",
+          message:
+            errorCode === "CredentialsSignin"
+              ? "Adresse mail ou mot de passe incorrect."
+              : "Impossible de vous connecter. Veuillez réessayer.",
+        };
+      }
+
+      redirect(toRelativeRedirect(result.url));
+    }
+
+    const destination = await getPostLoginRedirect(validated.email);
+
+    redirect(destination);
   } catch (error) {
     if (error instanceof AuthError) {
       if (error.type === "CredentialsSignin") {
