@@ -1,6 +1,7 @@
+"use client";
+
 import { signOutToHome } from "@/app/utils/auth-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,8 +11,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-import { Building2, ChevronDown, Heart, Layers2, LogOut, Settings2 } from "lucide-react";
+import { motion } from "framer-motion";
+import {
+  Building2,
+  ChevronDown,
+  Heart,
+  Layers2,
+  LogOut,
+  Settings2,
+  UserCircle,
+} from "lucide-react";
 import Link from "next/link";
 
 interface UserDropdownProps {
@@ -45,18 +54,24 @@ export function UserDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
-          <Avatar>
-            <AvatarImage src={avatarSrc} alt="Profile image" />
-            <AvatarFallback>{fallbackText}</AvatarFallback>
-          </Avatar>
-          <ChevronDown
-            size={16}
-            strokeWidth={2}
-            className="ms-2 opacity-60"
-            aria-hidden="true"
-          />
-        </Button>
+        <motion.button
+          className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+          whileHover={{ scale: 1.05 }}
+        >
+          <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center overflow-hidden">
+            {avatarSrc ? (
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={avatarSrc} alt="Profile image" />
+                <AvatarFallback className="bg-transparent text-white/80">
+                  {fallbackText}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <UserCircle className="w-5 h-5" />
+            )}
+          </div>
+          <ChevronDown className="w-4 h-4" aria-hidden="true" />
+        </motion.button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48" align="end">
         <DropdownMenuLabel className="flex min-w-0 flex-col">

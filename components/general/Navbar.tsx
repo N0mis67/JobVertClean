@@ -1,7 +1,8 @@
 import Link from "next/link";
-import leaf from "@/public/leaf.png"
+import leaf from "@/public/leaf.png";
 import Image from "next/image";
 import { Button, buttonVariants } from "../ui/button";
+import { motion } from 'motion/react';
 import { auth } from "@/app/utils/auth";
 import { Menu } from "lucide-react";
 import {
@@ -13,7 +14,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { UserDropdown } from "@/components/general/UserDropdown";
-import { prisma} from "@/app/utils/db";
+import { prisma } from "@/app/utils/db";
+import { PublishJobButton } from "./PublishJobButton";
 
 export async function Navbar() {
   const session = await auth();
@@ -37,40 +39,38 @@ export async function Navbar() {
     companyLogo = company?.logo ?? null;
     companyName = company?.name ?? null;
   }
-    return (
-        <nav className="flex items-center justify-between py-5">
-            <Link href="/" className="flex items-center gap-2">
-            <Image src={leaf} alt="Logo leaf" width={40} height={40}/>
-              <h1 className="text-2xl font-bold">
-                Job<span className="text-primary">Vert</span>
-              </h1>
-            </Link>
+  return (
+    <nav className="flex items-center justify-between py-5">
+      <Link href="/" className="flex items-center gap-2">
+        <Image src={leaf} alt="Logo leaf" width={40} height={40} />
+        <h1 className="text-2xl font-bold">
+          Job<span className="text-primary">Vert</span>
+        </h1>
+      </Link>
 
-            <div className="hidden md:flex items-center gap-4">
-              <Link href="/post-job" className={buttonVariants({ size: "lg" })}>
-                Publier un job
-              </Link>
-              {session?.user ? (
-                <UserDropdown
-                email={session.user.email as string}
-                  name={session.user.name as string}
-                  image={session.user.image}
-                  companyLogo={companyLogo}
-                  companyName={companyName}
-                  companyId={companyId}
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/login"
-                    className={buttonVariants({ variant: "outline", size: "lg" })}
-                  >
-                    Connexion
-                  </Link>
-                </div>
-              )}
-            </div>
-            <div className="md:hidden flex items-center gap-4">
+      <div className="hidden md:flex items-center gap-4">
+        <PublishJobButton />
+        {session?.user ? (
+          <UserDropdown
+            email={session.user.email as string}
+            name={session.user.name as string}
+            image={session.user.image}
+            companyLogo={companyLogo}
+            companyName={companyName}
+            companyId={companyId}
+          />
+        ) : (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/login"
+              className={buttonVariants({ variant: "outline", size: "lg" })}
+            >
+              Connexion
+            </Link>
+          </div>
+        )}
+      </div>
+      <div className="md:hidden flex items-center gap-4">
        
         {session?.user ? (
           <UserDropdown
@@ -107,7 +107,7 @@ export async function Navbar() {
                 </Link>
                 <Link
                   href="/post-job"
-                  className="text-lg px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 transition-colors duration-200"
+                  className="px-6 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:shadow-lg hover:shadow-green-500/30 transition-all"
                 >
                   Publier un Job
                 </Link>
@@ -122,8 +122,6 @@ export async function Navbar() {
           </Sheet>
         )}
       </div>
-
-           
-        </nav>
-    );
+      </nav>
+  );
 }
