@@ -14,7 +14,7 @@ export function Footer() {
         </Link>
         {" | "}
         <Link href="/cgu" className="hover:underline">
-          Conditions Générales d'Utilisation
+          Conditions Générales d&apos;Utilisation
         </Link>
         {" | "}
         <Link href="/pdc" className="hover:underline">

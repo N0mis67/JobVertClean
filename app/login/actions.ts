@@ -32,21 +32,23 @@ export type PasswordLoginState =
 
 const emailSchema = z.object({
   email: z
-    .string({ required_error: "L'adresse mail est obligatoire." })
+    .string()
     .trim()
     .toLowerCase()
+    .nonempty("L'adresse mail est obligatoire.")
     .email("Veuillez entrer une adresse mail valide."),
 });
 
 const passwordLoginSchema = z.object({
   email: z
-    .string({ required_error: "L'adresse mail est obligatoire." })
+    .string()
     .trim()
     .toLowerCase()
+    .nonempty("L'adresse mail est obligatoire.")
     .email("Veuillez entrer une adresse mail valide."),
   password: z
-    .string({ required_error: "Le mot de passe est obligatoire." })
-    .min(1, "Le mot de passe est obligatoire."),
+    .string()
+    .nonempty("Le mot de passe est obligatoire."),
 });
 
 function extractErrorFromRedirectUrl(value: string): string | null {
@@ -64,7 +66,7 @@ function toRelativeRedirect(value: string): string {
   try {
     const url = new URL(value);
     return `${url.pathname}${url.search}${url.hash}`;
-  } catch (error) {
+  } catch {
     return value.startsWith("/") ? value : "/onboarding";
   }
 }

@@ -201,7 +201,7 @@ export default async function JobIdPage({ params }: { params: Params }) {
                   <h3 className="font-semibold">Postuler maintenant</h3>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                S'il vous plaît, laissez {data.company.name} savoir que vous avez trouvé cet emploi sur JobVert. Cela nous aide à grandir !
+                S&apos;il vous plaît, laissez {data.company.name} savoir que vous avez trouvé cet emploi sur JobVert. Cela nous aide à grandir !
                 </p>
               </div>
               <Button className="w-full">
@@ -253,7 +253,7 @@ export default async function JobIdPage({ params }: { params: Params }) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">
-                    Type d'emploi
+                    Type d&apos;emploi
                   </span>
                   <span className="text-sm">{data.employmentType}</span>
                 </div>

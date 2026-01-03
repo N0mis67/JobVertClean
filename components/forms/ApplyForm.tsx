@@ -65,7 +65,7 @@ export function ApplyForm({ jobId, firstName, lastName, email }: ApplyFormProps)
       }
       toast.success("Application submitted successfully!");  // Succès de l’envoi
       // TODO: éventuellement rediriger ou afficher une confirmation supplémentaire
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong. Please try again."); // Erreur lors de l’envoi
     } finally {
       setPending(false);

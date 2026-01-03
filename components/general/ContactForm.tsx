@@ -40,7 +40,7 @@ export function ContactForm() {
         setStatus("error");
         setErrorMessage(result?.error || "Une erreur est survenue.");
       }
-    } catch (error) {
+    } catch {
       setStatus("error");
       setErrorMessage("Erreur réseau ou serveur.");
     }

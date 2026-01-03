@@ -20,7 +20,7 @@ const CancelledPage = () => {
             </p>
             
             <Button asChild className="w-full mt-5">
-              <Link href="/">Retour à la page d'accueil</Link>
+              <Link href="/">Retour à la page d&apos;accueil</Link>
             </Button>
           </div>
         </div>

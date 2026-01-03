@@ -46,7 +46,7 @@ export default function UserTypeSelection({
             <UserRound className="h-6 w-6 text-primary" />
           </div>
           <div className="text-left">
-            <h3 className="font-semibold text-lg">Demandeur d'emploi</h3>
+            <h3 className="font-semibold text-lg">Demandeur d&apos;emploi</h3>
             <p className="text-sm text-muted-foreground">
               Trouvez le job de vos rêves
             </p>

@@ -192,7 +192,7 @@ export function EditCompanyForm({ company }: EditCompanyFormProps) {
                 </SelectContent>
               </Select>
               <FormDescription>
-                Ce plan sera proposé par défaut lors de la création d'une nouvelle offre.
+                Ce plan sera proposé par défaut lors de la création d&apos;une nouvelle offre.
               </FormDescription>
               <FormMessage />
             </FormItem>

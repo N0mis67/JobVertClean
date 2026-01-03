@@ -18,15 +18,17 @@ export type RegisterState =
 const registerSchema = z
   .object({
     email: z
-      .string({ required_error: "L'adresse mail est obligatoire." })
+      .string()
       .trim()
+      .nonempty("L'adresse mail est obligatoire.")
       .email("Veuillez entrer une adresse mail valide."),
     password: z
-      .string({ required_error: "Le mot de passe est obligatoire." })
+      .string()
+      .nonempty("Le mot de passe est obligatoire.")
       .min(8, "Votre mot de passe doit contenir au moins 8 caractères."),
     confirmPassword: z
-      .string({ required_error: "Merci de confirmer votre mot de passe." })
-      .min(1, "Merci de confirmer votre mot de passe."),
+      .string()
+      .nonempty("Merci de confirmer votre mot de passe."),
   })
   .superRefine(({ password, confirmPassword }, ctx) => {
     if (password !== confirmPassword) {

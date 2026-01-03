@@ -233,7 +233,7 @@ export function EditJobForm({ jobPost }: iAppProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Informations sur l'entreprise</CardTitle>
+            <CardTitle>Informations sur l&apos;entreprise</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
@@ -242,7 +242,7 @@ export function EditJobForm({ jobPost }: iAppProps) {
                 name="companyName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nom de l'entreprise</FormLabel>
+                    <FormLabel>Nom de l&apos;entreprise</FormLabel>
                     <FormControl>
                       <Input placeholder="Company Name" {...field} />
                     </FormControl>
@@ -337,7 +337,7 @@ export function EditJobForm({ jobPost }: iAppProps) {
               name="companyDescription"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description de l'entreprise</FormLabel>
+                  <FormLabel>Description de l&apos;entreprise</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Company Description"
@@ -355,7 +355,7 @@ export function EditJobForm({ jobPost }: iAppProps) {
               name="companyLogo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Logo de l'entreprise</FormLabel>
+                  <FormLabel>Logo de l&apos;entreprise</FormLabel>
                   <FormControl>
                     <div>
                       {field.value ? (

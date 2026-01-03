@@ -36,7 +36,7 @@ type RedirectCallbackParams = Parameters<
 };
 
 export const authBaseConfig: NextAuthConfig = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as unknown as NonNullable<NextAuthConfig["adapter"]>,
   providers: [
     ResendProvider({
       apiKey: resendApiKey ?? "",

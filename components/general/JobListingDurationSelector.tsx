@@ -5,11 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { FormControl } from "../ui/form";
-import { ControllerRenderProps } from "react-hook-form";
+import type { ControllerRenderProps, FieldValues } from "react-hook-form";
 import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
 
 interface JobListingDurationSelectorProps {
-  field: ControllerRenderProps<any, "listingPlan">;
+  field: ControllerRenderProps<FieldValues, "listingPlan">;
 }
 
 export function JobListingDurationSelector({

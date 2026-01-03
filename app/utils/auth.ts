@@ -4,6 +4,7 @@ import ResendProvider from "next-auth/providers/resend";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { UserType } from "@prisma/client";
+import type { Adapter } from "next-auth/adapters";
 import { prisma } from "./db";
 import {
   emailFromAddress,
@@ -44,7 +45,7 @@ type TokenWithFlags = {
 };
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma) as any,
+  adapter: PrismaAdapter(prisma) as Adapter,
   session: {
     strategy: "jwt",
   },

@@ -21,7 +21,7 @@ const LoadingMyJobs = () => {
       <CardHeader>
         <CardTitle>Mes Jobs</CardTitle>
         <CardDescription>
-        Gérez vos offres d'emploi et vos candidatures ici.
+        Gérez vos offres d&apos;emploi et vos candidatures ici.
         </CardDescription>
       </CardHeader>
       <CardContent>

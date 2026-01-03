@@ -82,7 +82,7 @@ export function Hero() {
         >
           Découvrez des nouveaux emplois dans le secteur du paysage, que vous soyez
           paysagiste, élagueur, architecte ou technicien espaces verts. Trouvez un emploi qui
-          correspond à votre expertise dans l'aménagement paysager.
+          correspond à votre expertise dans l&apos;aménagement paysager.
         </motion.p>
 
         <motion.div

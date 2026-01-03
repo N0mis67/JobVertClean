@@ -33,7 +33,6 @@ import {
 import { countryList } from "@/app/utils/countriesList";
 import { UploadDropzone } from "@/components/general/UploadThingReExport";
 import type { ListingPlanName } from "@/types/subscription";
-import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
 
 const ALWAYS_ASK_VALUE = "always-ask";
 
@@ -79,7 +78,7 @@ export default function CompanyForm() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nom de l'entreprise</FormLabel>
+                    <FormLabel>Nom de l&apos;entreprise</FormLabel>
                     <FormControl>
                       <Input placeholder="Entrer le nom de l'entreprise" {...field} />
                     </FormControl>
@@ -177,7 +176,7 @@ export default function CompanyForm() {
               name="logo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Logo de l'entreprise</FormLabel>
+                  <FormLabel>Logo de l&apos;entreprise</FormLabel>
                   <FormControl>
                     <div>
                     {field.value ? (

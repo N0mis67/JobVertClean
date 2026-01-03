@@ -2,7 +2,6 @@ import Link from "next/link";
 import leaf from "@/public/leaf.png";
 import Image from "next/image";
 import { Button, buttonVariants } from "../ui/button";
-import { motion } from 'motion/react';
 import { auth } from "@/app/utils/auth";
 import { Menu } from "lucide-react";
 import {

@@ -1,12 +1,14 @@
 import { requireUser } from "@/app/utils/hook";
 import { redirect } from "next/navigation";
-import { ApplyForm } from "@/components/forms/ApplyForm";  // Composant du formulaire de candidature
+import { ApplyForm } from "@/components/forms/ApplyForm"; // Composant du formulaire de candidature
 
 interface ApplyPageProps {
-  params: { jobId: string };
+  params: Promise<{ jobId: string }>;
 }
 
 const ApplyPage = async ({ params }: ApplyPageProps) => {
+  const { jobId } = await params;
+
   // Vérification de l'authentification de l'utilisateur
   const user = await requireUser();
   if (!user) {
@@ -24,16 +26,17 @@ const ApplyPage = async ({ params }: ApplyPageProps) => {
   }
 
   return (
-    <div className="container mx-auto py-8">  
+    <div className="container mx-auto py-8">
       {/* Formulaire de candidature */}
-      <ApplyForm 
-        jobId={params.jobId} 
-        firstName={firstName} 
-        lastName={lastName} 
-        email={email ?? ""} 
+      <ApplyForm
+        jobId={jobId}
+        firstName={firstName}
+        lastName={lastName}
+        email={email ?? ""}
       />
     </div>
   );
 };
 
 export default ApplyPage;
+

@@ -47,11 +47,15 @@ import {
 } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { PlanUsageSummary } from "../subscription/PlanUsageSummary";
+import type { BenefitsSelectorProps } from "../general/BenefitsSelector";
 
-const BenefitsSelector = dynamic(() => import("../general/BenefitsSelector"), {
-  ssr: false,
-  loading: () => <div className="h-10 rounded-md bg-muted animate-pulse" />,
-});
+const BenefitsSelector = dynamic<BenefitsSelectorProps>(
+  () => import("../general/BenefitsSelector"),
+  {
+    ssr: false,
+    loading: () => <div className="h-10 rounded-md bg-muted animate-pulse" />,
+  }
+);
 
 const UploadDropzone = dynamic(
   () =>
@@ -62,7 +66,7 @@ const UploadDropzone = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex h-20 items-center justify-center rounded-md border border-dashed border-muted-foreground/50 bg-muted/30 text-sm text-muted-foreground">
-        Préparation de l'upload...
+        Préparation du téléchargement...
       </div>
     ),
   }
@@ -353,7 +357,7 @@ export function CreateJobForm({
                 name="employmentType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Type d'emploi</FormLabel>
+                    <FormLabel>Type d&apos;emploi</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
@@ -365,7 +369,7 @@ export function CreateJobForm({
                       </FormControl>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectLabel>Type d'emploi</SelectLabel>
+                          <SelectLabel>Type d&apos;emploi</SelectLabel>
                           <SelectItem value="Temps plein">Temps plein</SelectItem>
                           <SelectItem value="Temps partiel">Temps partiel</SelectItem>
                           <SelectItem value="Intérim">Intérim</SelectItem>
@@ -474,7 +478,7 @@ export function CreateJobForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>Informations de l'entreprise</CardTitle>
+            <CardTitle>Informations de l&apos;entreprise</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
@@ -483,7 +487,7 @@ export function CreateJobForm({
                 name="companyName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nom de l'entreprise</FormLabel>
+                    <FormLabel>Nom de l&apos;entreprise</FormLabel>
                     <FormControl>
                       <Input placeholder="Nom de l'entreprise..." {...field} />
                     </FormControl>
@@ -578,7 +582,7 @@ export function CreateJobForm({
               name="companyDescription"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description de l'entreprise</FormLabel>
+                  <FormLabel>Description de l&apos;entreprise</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Company Description"
@@ -596,7 +600,7 @@ export function CreateJobForm({
               name="companyLogo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Logo de l'entreprise</FormLabel>
+                  <FormLabel>Logo de l&apos;entreprise</FormLabel>
                   <FormControl>
                     <div>
                       {field.value ? (
@@ -633,7 +637,7 @@ export function CreateJobForm({
                         />
                         ) : (
                         <div className="flex h-20 items-center justify-center rounded-md border border-dashed border-muted-foreground/50 bg-muted/30 text-sm text-muted-foreground">
-                          Préparation de l'upload...
+                          Préparation du téléchargement...
                         </div>
                       )}
                     </div>
