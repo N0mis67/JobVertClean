@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType,type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, type ControllerRenderProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { XIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -47,15 +47,17 @@ import {
 } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { PlanUsageSummary } from "../subscription/PlanUsageSummary";
-import type { BenefitsSelectorProps } from "../general/BenefitsSelector";
+import type { SalaryRangeSelectorProps } from "../general/SalaryRangeSelector";
 
-const BenefitsSelector = dynamic<BenefitsSelectorProps>(
+const BenefitsSelector = dynamic(
   () => import("../general/BenefitsSelector"),
   {
     ssr: false,
     loading: () => <div className="h-10 rounded-md bg-muted animate-pulse" />,
   }
-);
+) as ComponentType<{
+  field: ControllerRenderProps<z.infer<typeof jobSchema>, "benefits">;
+}>;
 
 const UploadDropzone = dynamic(
   () =>
@@ -73,12 +75,15 @@ const UploadDropzone = dynamic(
 );
 
 const SalaryRangeSelector = dynamic(
-  () => import("../general/SalaryRangeSelector").then((mod) => mod.SalaryRangeSelector),
+  () =>
+    import("../general/SalaryRangeSelector").then(
+      (mod) => mod.SalaryRangeSelector
+    ),
   {
     ssr: false,
     loading: () => <div className="h-12 rounded-md bg-muted animate-pulse" />,
   }
-);
+)as ComponentType<SalaryRangeSelectorProps<z.infer<typeof jobSchema>>>;
 
 const JobDescriptionEditor = dynamic(
   () => import("../richTextEditor/JobDescriptionEditor"),

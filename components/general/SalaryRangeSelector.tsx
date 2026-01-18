@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { Slider } from "@/components/ui/slider";
-import { Control, useController, FieldValues, Path } from "react-hook-form";
+import { Control, useController, type FieldValues, Path } from "react-hook-form";
 import { formatCurrency } from "@/app/utils/formatCurrency";
 
-interface SalaryRangeSelectorProps<TFieldValues extends FieldValues = FieldValues> {
+export interface SalaryRangeSelectorProps<
+  TFieldValues extends FieldValues = FieldValues
+> {
   control: Control<TFieldValues>;
   minSalary?: number;
   maxSalary?: number;
