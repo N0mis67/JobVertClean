@@ -80,9 +80,9 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.6 }}
         >
-          Découvrez des nouveaux emplois dans le secteur du paysage, que vous soyez
-          paysagiste, élagueur, architecte ou technicien espaces verts. Trouvez un emploi qui
-          correspond à votre expertise dans l&apos;aménagement paysager.
+          Trouvez des offres d&apos;emploi spécialisées dans le domaine du paysage : 
+          paysagiste, élagueur, architecte paysagiste, technicien espaces verts,
+          et plus encore. Recherchez par type de contrat, localisation et niveau de salaire sur JobVert.
         </motion.p>
 
         <motion.div
@@ -103,9 +103,6 @@ export function Hero() {
                 ease: [0.42, 0, 0.58, 1],
               }}
             />
-            <div className="relative bg-gradient-to-r from-green-500/20 to-green-600/20 backdrop-blur-sm border border-green-500/30 rounded-full px-8 py-3">
-              <span className="text-green-400 text-sm">✨ Nouvelles offres chaque jour</span>
-            </div>
           </div>
         </motion.div>
       </div>
