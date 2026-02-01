@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Page d'accueil -->
+  <url>
+    <loc>https://jobvert.fr/</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Pages statiques -->
+  <url>
+    <loc>https://jobvert.fr/contact</loc>
+    <lastmod>2025-06-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://jobvert.fr/mentions-legales</loc>
+    <lastmod>2025-06-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://jobvert.fr/cgu</loc>
+    <lastmod>2025-06-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://jobvert.fr/pdc</loc>
+    <lastmod>2025-06-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <!-- Pages dynamiques : Offres d’emploi -->
+  <url>
+    <loc>https://jobvert.fr/job/92807371-15e6-46a5-94a4-dd7a98701561</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://jobvert.fr/job/e5990d68-8f47-4624-9cce-a0858dca5fc8</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://jobvert.fr/job/5344375f-d6d4-4c77-9b10-ec8eddcc692b</loc>
+    <lastmod>2025-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Pages dynamiques : Profils d’entreprise -->
+  <url>
+    <loc>https://jobvert.fr/company/d1434ff3-1545-4bfa-ab20-f4b934a1a630</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://jobvert.fr/company/d4392c02-6b9e-43cd-8461-b989c5202c8e</loc>
+    <lastmod>2025-09-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>
