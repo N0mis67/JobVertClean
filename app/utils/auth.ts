@@ -110,20 +110,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         enrichedToken.userType = user.userType;
         return enrichedToken;
       }
-      if (enrichedToken.sub && enrichedToken.onboardingCompleted === undefined) {
-          const existingUser = await prisma.user.findUnique({
-          where: { id: enrichedToken.sub },
-          select: {
-            onboardingCompleted: true,
-            userType: true,
-          },
-        });
-
-        if (existingUser) {
-          enrichedToken.onboardingCompleted = existingUser.onboardingCompleted;
-          enrichedToken.userType = existingUser.userType;
-        }
-      }
+      if (enrichedToken.sub) {
+  const existingUser = await prisma.user.findUnique({
+    where: { id: enrichedToken.sub },
+    select: { onboardingCompleted: true, userType: true }
+  });
+  if (existingUser) {
+    enrichedToken.onboardingCompleted = existingUser.onboardingCompleted;
+    enrichedToken.userType = existingUser.userType;
+  }
+}
 
       return enrichedToken;
     },
