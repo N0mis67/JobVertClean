@@ -16,12 +16,22 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "68zwz8lm8h.ufs.sh",
+        hostname: "*.ufs.sh",
+        port: "",
+      },
+      {
+        protocol: "https",
+        hostname: "utfs.io",
         port: "",
       },
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
+        port: "",
+      },
+      {
+        protocol: "https",
+        hostname: "avatar.vercel.sh",
         port: "",
       },
     ],

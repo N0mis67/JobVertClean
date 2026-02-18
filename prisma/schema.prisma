@@ -146,6 +146,8 @@ model JobPost {
   status       JobPostStatus @default(DRAFT)
   applications Int           @default(0)
 
+  validThrough  DateTime?
+
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId String
 

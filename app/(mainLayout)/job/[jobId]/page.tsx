@@ -16,6 +16,55 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+const BASE_URL = process.env.NEXT_PUBLIC_URL ?? "https://jobvert.fr";
+
+function getEmploymentType(employmentType: string): string {
+  const normalized = employmentType.trim().toLowerCase();
+
+  switch (normalized) {
+    case "temps plein":
+      return "FULL_TIME";
+    case "temps partiel":
+      return "PART_TIME";
+    case "intérim":
+    case "interim":
+      return "TEMPORARY";
+    case "apprentissage":
+      return "INTERN";
+    default:
+      return "OTHER";
+  }
+}
+
+function getDescriptionText(description: string): string {
+  try {
+    const parsed = JSON.parse(description);
+    const blocks: string[] = [];
+
+    const walk = (node: unknown) => {
+      if (!node || typeof node !== "object") {
+        return;
+      }
+
+      const currentNode = node as { text?: unknown; content?: unknown };
+
+      if (typeof currentNode.text === "string") {
+        blocks.push(currentNode.text);
+      }
+
+      if (Array.isArray(currentNode.content)) {
+        currentNode.content.forEach(walk);
+      }
+    };
+
+    walk(parsed);
+
+    return blocks.join(" ").replace(/\s+/g, " ").trim();
+  } catch {
+    return description;
+  }
+}
+
 const aj = arcjet.withRule(
   detectBot({
     mode: "LIVE",
@@ -57,14 +106,18 @@ async function getJob(jobId: string, userId?: string) {
         jobDescription: true,
         location: true,
         employmentType: true,
+        salaryFrom: true,
+        salaryTo: true,
         benefits: true,
         createdAt: true,
+        updatedAt: true,
         listingPlan: true,
         company: {
           select: {
             id: true,
             name: true,
             logo: true,
+            website: true,
             location: true,
             about: true,
           },
@@ -116,8 +169,75 @@ export default async function JobIdPage({ params }: { params: Params }) {
 
   const locationFlag = getFlagEmoji(data.location);
 
+  const validThrough = new Date(
+    data.createdAt.getTime() +
+      (jobListingDurationPricing.find((plan) => plan.name === data.listingPlan)
+        ?.durationDays ??
+        0) *
+        24 *
+        60 *
+        60 *
+        1000
+  );
+
+  if (validThrough < new Date()) {
+  notFound();
+}
+
+  const jobPostingStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    title: data.jobTitle,
+    description: getDescriptionText(data.jobDescription),
+    datePosted: data.createdAt.toISOString(),
+    validThrough: validThrough.toISOString(),
+    employmentType: getEmploymentType(data.employmentType),
+    hiringOrganization: {
+      "@type": "Organization",
+      name: data.company.name,
+      sameAs: data.company.website ?? undefined,
+      logo:
+        data.company.logo ?? `https://avatar.vercel.sh/${encodeURIComponent(data.company.name)}`,
+    },
+    jobLocation: {
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: data.location,
+        addressCountry: "FR",
+      },
+    },
+    identifier: {
+      "@type": "PropertyValue",
+      name: data.company.name,
+      value: jobId,
+    },
+    url: `${BASE_URL}/job/${jobId}`,
+    directApply: true,
+    dateModified: data.updatedAt.toISOString(),
+    jobBenefits: benefits
+      .filter((benefit) => data.benefits.includes(benefit.id))
+      .map((benefit) => benefit.label),
+    baseSalary: {
+      "@type": "MonetaryAmount",
+      currency: "EUR",
+      value: {
+        "@type": "QuantitativeValue",
+        minValue: data.salaryFrom,
+        maxValue: data.salaryTo,
+        unitText: "YEAR",
+      },
+    },
+  };
+
   return (
     <div className="container mx-auto py-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jobPostingStructuredData),
+        }}
+      />
       <div className="grid lg:grid-cols-[1fr,400px] gap-8">
         {/* Main Content */}
         <div className="space-y-8">
@@ -223,16 +343,7 @@ export default async function JobIdPage({ params }: { params: Params }) {
                   Appliquer avant
                   </span>
                   <span className="text-sm">
-                    {new Date(
-                      data.createdAt.getTime() +
-                     (jobListingDurationPricing.find(
-                        (plan) => plan.name === data.listingPlan
-                      )?.durationDays ?? 0) *
-                        24 *
-                        60 *
-                        60 *
-                        1000
-                    ).toLocaleDateString("fr-FR", {
+                    {validThrough.toLocaleDateString("fr-FR", {
                       month: "long",
                       day: "numeric",
                       year: "numeric",
