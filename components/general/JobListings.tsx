@@ -32,6 +32,7 @@ async function getJobs(
       where,
       select: {
         jobTitle: true,
+        jobDescription: true,
         id: true,
         salaryFrom: true,
         salaryTo: true,

@@ -11,6 +11,7 @@ interface iAppProps {
     job: {
         id: string;
         jobTitle: string;
+        jobDescription?: string | null; 
         salaryFrom: number;
         salaryTo: number;
         employmentType: string;
@@ -26,9 +27,46 @@ interface iAppProps {
     index?: number;
 }
 
+function getFirstLineOfAdContent(description?: string | null): string {
+  if (typeof description !== "string") {
+    return "";
+  }
+  try {
+    const parsed = JSON.parse(description);
+    const lines: string[] = [];
+
+    const walk = (node: unknown) => {
+      if (!node || typeof node !== "object") {
+        return;
+      }
+
+      const currentNode = node as { text?: unknown; content?: unknown };
+
+      if (typeof currentNode.text === "string") {
+        const cleaned = currentNode.text.trim();
+
+        if (cleaned) {
+          lines.push(cleaned);
+        }
+      }
+
+      if (Array.isArray(currentNode.content)) {
+        currentNode.content.forEach(walk);
+      }
+    };
+
+    walk(parsed);
+
+    return lines[0] ?? "";
+  } catch {
+    return description.split(/\r?\n/).find((line) => line.trim())?.trim() ?? "";
+  }
+}
+
 export function JobCard({ job, index = 0 }: iAppProps) {
     const salary = `${formatCurrency(job.salaryFrom)} - ${formatCurrency(job.salaryTo)}`;
     const postedTime = formatRelativeTime(job.createdAt);
+    const adPreview = getFirstLineOfAdContent(job.jobDescription) || job.company.about;
 
     return (
         <Link href={`/job/${job.id}`} className="block">
@@ -98,7 +136,7 @@ export function JobCard({ job, index = 0 }: iAppProps) {
               </div>
 
               {/* Description */}
-              <p className="text-white/70 text-sm mb-4 line-clamp-2">{job.company.about}</p>
+              <p className="text-white/70 text-sm mb-4 line-clamp-2">{adPreview}</p>
 
               {/* Footer */}
               <div className="flex items-center justify-between pt-4 border-t border-white/5">

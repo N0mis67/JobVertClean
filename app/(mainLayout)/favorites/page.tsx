@@ -14,6 +14,7 @@ async function getFavorites(userId: string) {
         select: {
           id: true,
           jobTitle: true,
+          jobDescription: true,
           salaryFrom: true,
           salaryTo: true,
           employmentType: true,
