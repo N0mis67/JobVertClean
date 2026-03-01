@@ -94,7 +94,7 @@ export const sendPeriodicJobListings = inngest.createFunction(
             .join("");
 
           await resend.emails.send({
-            from: "JobMarshal <onboarding@resend.dev>",
+            from: "JobVert <contact@jobvert.fr>",
             to: ["john.rak.fisher@gmail.com"],
             subject: "Latest Job Opportniues for you",
             html: `

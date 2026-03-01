@@ -6,7 +6,7 @@ export const resendClient =
   resendApiKey !== undefined ? new Resend(resendApiKey) : undefined;
 
 export const emailFromAddress =
-  process.env.AUTH_EMAIL_FROM ?? "JobVert <onboarding@resend.dev>";
+  process.env.AUTH_EMAIL_FROM ?? "JobVert <contact@jobvert.fr>";
 
 export function ensureResendClient() {
   if (!resendClient) {
