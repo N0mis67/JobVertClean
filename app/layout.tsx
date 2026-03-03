@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/general/theme-provider";
+import { CookieConsentBanner } from "@/components/general/CookieConsentBanner";
 
 export const metadata: Metadata = {
   title: "JobVert - Offres d'emploi en aménagement paysager",
@@ -22,6 +23,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
               {children}
+              <CookieConsentBanner />
           </ThemeProvider>
       </body>
     </html>

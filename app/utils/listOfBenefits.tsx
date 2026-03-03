@@ -6,11 +6,11 @@ import {
     Clock,
     Calendar,
     GraduationCap,
-    Dumbbell,
-    Brain,
     PieChart,
     Coins,
     UserPlus,
+    Car,
+    Hamburger
   } from "lucide-react";
   
   interface Benefit {
@@ -22,7 +22,7 @@ import {
   export const benefits: Benefit[] = [
     {
       id: "medical",
-      label: "Bonne mutuelle santé",
+      label: "Mutuelle santé",
       icon: <Heart className="w-3 h-3" />,
     },
     {
@@ -57,13 +57,13 @@ import {
     },
     {
       id: "mental_wellness",
-      label: "Budget bien-être mental",
-      icon: <Brain className="w-3 h-3" />,
+      label: "Indemnité panier repas",
+      icon: <Hamburger className="w-3 h-3" />,
     },
     {
       id: "gym",
-      label: "Abonnement à une salle de sport",
-      icon: <Dumbbell className="w-3 h-3" />,
+      label: "Mise à disposition de véhicules de service",
+      icon: <Car className="w-3 h-3" />,
     },
     {
       id: "profit_sharing",

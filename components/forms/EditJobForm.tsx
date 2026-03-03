@@ -172,8 +172,7 @@ export function EditJobForm({ jobPost }: iAppProps) {
                           <SelectLabel>Localisation</SelectLabel>
                           {countryList.map((country) => (
                             <SelectItem value={country.name} key={country.code}>
-                              <span>{country.flagEmoji}</span>
-                              <span className="pl-2">{country.name}</span>
+                              <span>{country.code} - {country.name}</span>
                             </SelectItem>
                           ))}
                         </SelectGroup>
@@ -271,8 +270,7 @@ export function EditJobForm({ jobPost }: iAppProps) {
                           <SelectLabel>Localisation</SelectLabel>
                           {countryList.map((country) => (
                             <SelectItem value={country.name} key={country.name}>
-                              <span>{country.flagEmoji}</span>
-                              <span className="pl-2">{country.name}</span>
+                              <span>{country.code} - {country.name}</span>
                             </SelectItem>
                           ))}
                         </SelectGroup>

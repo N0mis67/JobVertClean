@@ -171,8 +171,7 @@ export function JobFilters() {
                   setIsOpen(false);
                 }}
               >
-                <span>{country.flagEmoji}</span>
-                <span className="text-sm">{country.name}</span>
+              <span className="text-sm">{country.code} - {country.name}</span>
               </motion.button>
             ))}
           </motion.div>

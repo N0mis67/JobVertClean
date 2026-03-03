@@ -1,20 +1,27 @@
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@/app/utils/auth";
+import {authBaseConfig} from "@/app/utils/auth-config";
+
+const { auth } = NextAuth(authBaseConfig);
 
 export async function middleware(request: NextRequest) {
   const session = await auth();
 
-  if (!session?.user?.id) {
+  if (!session?.user) {
     return NextResponse.next();
   }
 
-  const onboardingCompleted = session.user.onboardingCompleted;
-  const isOnboardingRoute = request.nextUrl.pathname.startsWith("/onboarding");
+  const isOnboardingRoute =
+    request.nextUrl.pathname.startsWith("/onboarding");
+
+  const onboardingCompleted = (session.user as any)
+    ?.onboardingCompleted;
 
   if (onboardingCompleted === false && !isOnboardingRoute) {
-    const onboardingUrl = new URL("/onboarding", request.url);
-    return NextResponse.redirect(onboardingUrl);
+    return NextResponse.redirect(
+      new URL("/onboarding", request.url)
+    );
   }
 
   return NextResponse.next();
