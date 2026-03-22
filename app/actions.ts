@@ -13,6 +13,7 @@ import { request } from "@arcjet/next";
 import { inngest } from "./utils/inngest/client";
 import { JobPostStatus } from "@prisma/client";
 import { Resend } from "resend";
+import { generateUniqueJobSlug } from "./utils/jobSlug";
 
 const resend =
   process.env.RESEND_API_KEY !== undefined
@@ -189,9 +190,15 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
   const freeMode = process.env.NEXT_PUBLIC_FREE_POSTING === "true";
   const requiresPayment = !freeMode && remainingCredits <= 0;
 
+  const slug = await generateUniqueJobSlug(prisma, {
+    title: validatedData.jobTitle,
+    city: validatedData.location,
+  });
+
   const jobPost = await prisma.jobPost.create({
     data: {
       companyId: company.id,
+      slug,
       jobDescription: validatedData.jobDescription,
       jobTitle: validatedData.jobTitle,
       employmentType: validatedData.employmentType,
@@ -307,6 +314,12 @@ export async function updateJobPost(
 
   const validatedData = jobSchema.parse(data);
 
+  const slug = await generateUniqueJobSlug(prisma, {
+    title: validatedData.jobTitle,
+    city: validatedData.location,
+    excludeJobId: jobId,
+  });
+
   await prisma.jobPost.update({
     where: {
       id: jobId,
@@ -315,6 +328,7 @@ export async function updateJobPost(
       },
     },
     data: {
+      slug,
       jobDescription: validatedData.jobDescription,
       jobTitle: validatedData.jobTitle,
       employmentType: validatedData.employmentType,
@@ -354,7 +368,14 @@ export async function saveJobPost(jobId: string) {
     },
   });
 
-  revalidatePath(`/job/${jobId}`);
+  const job = await prisma.jobPost.findUnique({
+    where: { id: jobId },
+    select: { slug: true },
+  });
+
+  if (job?.slug) {
+    revalidatePath(`/job/${job.slug}`);
+  }
 }
 
 export async function unsaveJobPost(savedJobPostId: string) {
@@ -366,10 +387,16 @@ export async function unsaveJobPost(savedJobPostId: string) {
       userId: user.id as string,
     },
     select: {
-      jobId: true,
+      job: {
+        select: {
+          slug: true,
+        },
+      },
     },
   });
 
-  revalidatePath(`/job/${data.jobId}`);
+  if (data.job.slug) {
+    revalidatePath(`/job/${data.job.slug}`);
+  }
  
 }

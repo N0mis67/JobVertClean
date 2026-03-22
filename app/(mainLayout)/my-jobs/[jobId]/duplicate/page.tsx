@@ -2,6 +2,7 @@ import { prisma } from "@/app/utils/db";
 import { requireUser } from "@/app/utils/hook";
 import { JobPostStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { generateUniqueJobSlug } from "@/app/utils/jobSlug";
 
 type Params = Promise<{ jobId: string }>;
 
@@ -41,9 +42,15 @@ export default async function DuplicateJobPage({
     ? original.jobTitle
     : `${original.jobTitle} (copie)`;
 
+  const slug = await generateUniqueJobSlug(prisma, {
+    title: duplicatedTitle,
+    city: original.location,
+  });
+
   const duplicated = await prisma.jobPost.create({
     data: {
       companyId: original.companyId,
+      slug,
       jobTitle: duplicatedTitle,
       employmentType: original.employmentType,
       location: original.location,

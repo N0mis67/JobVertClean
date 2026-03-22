@@ -14,7 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         status: JobPostStatus.ACTIVE,
       },
       select: {
-        id: true,
+        slug: true,
         updatedAt: true,
       },
     })
@@ -61,7 +61,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
       // Offres
       ...jobs.map((job) => ({
-        url: `${BASE_URL}/job/${job.id}`,
+        url: `${BASE_URL}/job/${job.slug}`,
         lastModified: job.updatedAt,
         changeFrequency: "daily" as const,
         priority: 0.8,

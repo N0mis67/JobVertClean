@@ -34,6 +34,7 @@ async function getJobs(
         jobTitle: true,
         jobDescription: true,
         id: true,
+        slug: true,
         salaryFrom: true,
         salaryTo: true,
         employmentType: true,

@@ -44,6 +44,7 @@ async function getJobs(userId: string) {
     },
     select: {
       id: true,
+      slug: true,
       jobTitle: true,
       status: true,
       createdAt: true,
@@ -229,7 +230,7 @@ const MyJobs = async () => {
                             </Link>
                           </DropdownMenuItem>
                           <CopyLinkMenuItem
-                            jobUrl={`${process.env.NEXT_PUBLIC_URL}/job/${listing.id}`}
+                            jobUrl={`${process.env.NEXT_PUBLIC_URL}/job/${listing.slug}`}
                           />
                           <DropdownMenuSeparator />
                           <DropdownMenuItem asChild>

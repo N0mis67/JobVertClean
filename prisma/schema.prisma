@@ -134,6 +134,7 @@ model JobSeeker {
 model JobPost {
   id String @id @default(uuid())
 
+  slug            String @unique
   jobTitle        String
   employmentType  String
   location        String

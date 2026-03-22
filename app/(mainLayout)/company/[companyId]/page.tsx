@@ -86,6 +86,7 @@ export default async function CompanyProfilePage({
       JobPost: {
         select: {
           id: true,
+          slug: true,
           jobTitle: true,
           status: true,
           createdAt: true,
@@ -292,7 +293,7 @@ export default async function CompanyProfilePage({
                     <TableRow key={job.id}>
                       <TableCell className="font-medium">
                         <Link
-                          href={`/job/${job.id}`}
+                          href={`/job/${job.slug}`}
                           className="hover:underline"
                         >
                           {job.jobTitle}

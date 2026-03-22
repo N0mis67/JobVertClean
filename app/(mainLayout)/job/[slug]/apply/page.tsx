@@ -1,21 +1,43 @@
 import { requireUser } from "@/app/utils/hook";
+import { prisma } from "@/app/utils/db";
+import { isUuid } from "@/app/utils/jobSlug";
 import { redirect } from "next/navigation";
-import { ApplyForm } from "@/components/forms/ApplyForm"; // Composant du formulaire de candidature
+import { ApplyForm } from "@/components/forms/ApplyForm";
 
 interface ApplyPageProps {
-  params: Promise<{ jobId: string }>;
+  params: Promise<{ slug: string }>;
 }
 
 const ApplyPage = async ({ params }: ApplyPageProps) => {
-  const { jobId } = await params;
+  const { slug } = await params;
 
-  // Vérification de l'authentification de l'utilisateur
+  const job = await prisma.jobPost.findFirst({
+    where: {
+      OR: [
+        { slug },
+        ...(isUuid(slug) ? [{ id: slug }] : []),
+      ],
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+      slug: true,
+    },
+  });
+
+  if (!job) {
+    return redirect("/");
+  }
+
+  if (job.slug !== slug) {
+    return redirect(`/job/${job.slug}/apply`);
+  }
+
   const user = await requireUser();
   if (!user) {
     return redirect("/login");
   }
 
-  // Préparation des valeurs par défaut à partir des infos utilisateur
   const { name, email } = user;
   let firstName = "";
   let lastName = "";
@@ -27,9 +49,8 @@ const ApplyPage = async ({ params }: ApplyPageProps) => {
 
   return (
     <div className="container mx-auto py-8">
-      {/* Formulaire de candidature */}
       <ApplyForm
-        jobId={jobId}
+        jobId={job.id}
         firstName={firstName}
         lastName={lastName}
         email={email ?? ""}
@@ -39,4 +60,3 @@ const ApplyPage = async ({ params }: ApplyPageProps) => {
 };
 
 export default ApplyPage;
-

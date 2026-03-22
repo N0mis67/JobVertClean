@@ -10,6 +10,7 @@ import { formatRelativeTime } from "@/app/utils/formatRelativeTime";
 interface iAppProps {
     job: {
         id: string;
+        slug: string;
         jobTitle: string;
         jobDescription?: string | null; 
         salaryFrom: number;
@@ -69,7 +70,7 @@ export function JobCard({ job, index = 0 }: iAppProps) {
     const adPreview = getFirstLineOfAdContent(job.jobDescription) || job.company.about;
 
     return (
-        <Link href={`/job/${job.id}`} className="block">
+        <Link href={`/job/${job.slug}`} className="block">
           <motion.div
             className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-green-500/50 transition-all cursor-pointer overflow-hidden"
             initial={{ opacity: 0, y: 50 }}
