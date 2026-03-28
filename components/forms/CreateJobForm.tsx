@@ -629,7 +629,15 @@ export function CreateJobForm({
                         <UploadDropzone
                           endpoint="imageUploader"
                           onClientUploadComplete={(res) => {
-                            field.onChange(res[0].url);
+                            const url = res?.[0]?.ufsUrl ?? res?.[0]?.url;
+                            if (!url) {
+                              toast.error(
+                                "Impossible de récupérer l'URL du logo. Veuillez réessayer."
+                              );
+                              return;
+                            }
+
+                            field.onChange(url);
                             toast.success("Logo uploaded successfully!");
                           }}
                           onUploadError={() => {

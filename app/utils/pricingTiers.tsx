@@ -1,6 +1,6 @@
 export const jobListingDurationPricing = [
   {
-    name: "Bonsai",
+    name: "Bonsai (gratuit)",
     priceMonthly: 79,
     priceAnnual: 790,
     jobLimit: 1,
@@ -11,7 +11,7 @@ export const jobListingDurationPricing = [
     ],
   },
   {
-    name: "Arbuste",
+    name: "Arbuste (gratuit)",
     priceMonthly: 149,
     priceAnnual: 1490,
     jobLimit: 3,
@@ -22,7 +22,7 @@ export const jobListingDurationPricing = [
     ],
   },
   {
-    name: "Forêt",
+    name: "Forêt (gratuit)",
     priceMonthly: 249,
     priceAnnual: 2490,
     jobLimit: 10,

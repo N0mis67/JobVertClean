@@ -30,6 +30,7 @@ model User {
   Company      Company?
   JobSeeker    JobSeeker?
   SavedJobPost SavedJobPost[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Account {
@@ -76,6 +77,18 @@ model VerificationToken {
   expires    DateTime
 
   @@id([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Optional for WebAuthn support

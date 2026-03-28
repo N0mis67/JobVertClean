@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { loginWithPassword } from "@/app/login/actions";
 import type { PasswordLoginState } from "@/app/login/actions";
@@ -36,6 +37,14 @@ export function PasswordLoginForm() {
           placeholder="••••••••••••"
           required
         />
+        <div className="flex justify-end">
+          <Link
+            href="/reset-password"
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Réinitialiser mon mot de passe
+          </Link>
+        </div>
       </div>
 
       <GeneralSubmitButton text="Me connecter" />
