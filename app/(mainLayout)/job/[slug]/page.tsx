@@ -27,6 +27,36 @@ const FALLBACK_LOCATION = "France";
 
 type Params = Promise<{ slug: string }>;
 
+function normalizeSlugCandidate(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getLegacySlugCandidates(param: string): string[] {
+  const normalized = normalizeSlugCandidate(param);
+
+  if (!normalized) {
+    return [];
+  }
+
+  const segments = normalized.split("-").filter(Boolean);
+  const candidates: string[] = [];
+
+  for (let i = segments.length; i >= Math.max(2, segments.length - 4); i -= 1) {
+    const candidate = segments.slice(0, i).join("-");
+
+    if (candidate) {
+      candidates.push(candidate);
+    }
+  }
+
+  return [...new Set(candidates)];
+}
+
 function getEmploymentType(employmentType: string): string {
   const normalized = employmentType.trim().toLowerCase();
 
@@ -189,7 +219,7 @@ function getClient(session: boolean) {
 }
 
 async function findJobByParam(param: string) {
-  const bySlug = await prisma.jobPost.findUnique({
+  const bySlug = await prisma.jobPost.findFirst({
     where: {
       slug: param,
       status: "ACTIVE",
@@ -204,6 +234,29 @@ async function findJobByParam(param: string) {
 
   if (bySlug) {
     return bySlug;
+  }
+
+  const legacyCandidates = getLegacySlugCandidates(param).filter(
+    (candidate) => candidate !== param
+  );
+
+  for (const candidate of legacyCandidates) {
+    const byLegacySlug = await prisma.jobPost.findFirst({
+      where: {
+        slug: candidate,
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+        slug: true,
+        jobTitle: true,
+        location: true,
+      },
+    });
+
+    if (byLegacySlug) {
+      return byLegacySlug;
+    }
   }
 
   if (!isUuid(param)) {
@@ -226,7 +279,7 @@ async function findJobByParam(param: string) {
 
 async function getJobDetails(slug: string, userId?: string) {
   const [jobData, savedJob] = await Promise.all([
-    prisma.jobPost.findUnique({
+    prisma.jobPost.findFirst({
       where: {
         slug,
         status: "ACTIVE",

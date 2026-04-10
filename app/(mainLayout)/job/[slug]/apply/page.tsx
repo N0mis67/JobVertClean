@@ -8,15 +8,42 @@ interface ApplyPageProps {
   params: Promise<{ slug: string }>;
 }
 
+function normalizeSlugCandidate(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getLegacySlugCandidates(param: string): string[] {
+  const normalized = normalizeSlugCandidate(param);
+
+  if (!normalized) {
+    return [];
+  }
+
+  const segments = normalized.split("-").filter(Boolean);
+  const candidates: string[] = [];
+
+  for (let i = segments.length; i >= Math.max(2, segments.length - 4); i -= 1) {
+    const candidate = segments.slice(0, i).join("-");
+
+    if (candidate) {
+      candidates.push(candidate);
+    }
+  }
+
+  return [...new Set(candidates)];
+}
+
 const ApplyPage = async ({ params }: ApplyPageProps) => {
   const { slug } = await params;
 
-  const job = await prisma.jobPost.findFirst({
+  let job = await prisma.jobPost.findFirst({
     where: {
-      OR: [
-        { slug },
-        ...(isUuid(slug) ? [{ id: slug }] : []),
-      ],
+      OR: [{ slug }, ...(isUuid(slug) ? [{ id: slug }] : [])],
       status: "ACTIVE",
     },
     select: {
@@ -24,6 +51,29 @@ const ApplyPage = async ({ params }: ApplyPageProps) => {
       slug: true,
     },
   });
+
+  if (!job) {
+    const legacyCandidates = getLegacySlugCandidates(slug).filter(
+      (candidate) => candidate !== slug
+    );
+
+    for (const candidate of legacyCandidates) {
+      job = await prisma.jobPost.findFirst({
+        where: {
+          slug: candidate,
+          status: "ACTIVE",
+        },
+        select: {
+          id: true,
+          slug: true,
+        },
+      });
+
+      if (job) {
+        break;
+      }
+    }
+  }
 
   if (!job) {
     return redirect("/");
