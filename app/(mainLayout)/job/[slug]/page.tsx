@@ -1,5 +1,4 @@
 import { saveJobPost, unsaveJobPost } from "@/app/actions";
-import arcjet, { detectBot, tokenBucket } from "@/app/utils/arcjet";
 import { auth } from "@/app/utils/auth";
 import { getFlagEmoji } from "@/app/utils/countriesList";
 import { prisma } from "@/app/utils/db";
@@ -11,7 +10,6 @@ import { SaveJobButton } from "@/components/general/SubmitButtons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { request } from "@arcjet/next";
 import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -189,35 +187,6 @@ function cleanJsonLd<T>(value: T): T | undefined {
   return value;
 }
 
-const aj = arcjet.withRule(
-  detectBot({
-    mode: "LIVE",
-    allow: ["CATEGORY:SEARCH_ENGINE", "CATEGORY:PREVIEW"],
-  })
-);
-
-function getClient(session: boolean) {
-  if (session) {
-    return aj.withRule(
-      tokenBucket({
-        mode: "LIVE",
-        capacity: 100,
-        interval: 60,
-        refillRate: 30,
-      })
-    );
-  }
-
-  return aj.withRule(
-    tokenBucket({
-      mode: "LIVE",
-      capacity: 100,
-      interval: 60,
-      refillRate: 10,
-    })
-  );
-}
-
 async function findJobByParam(param: string) {
   const bySlug = await prisma.jobPost.findFirst({
     where: {
@@ -361,13 +330,6 @@ export default async function JobPage({ params }: { params: Params }) {
   const { slug: routeParam } = await params;
 
   const session = await auth();
-  const req = await request();
-  const decision = await getClient(!!session).protect(req, { requested: 10 });
-
-  if (decision.isDenied()) {
-    throw new Error("forbidden");
-  }
-
   const resolved = await findJobByParam(routeParam);
 
   if (!resolved) {
