@@ -1,22 +1,22 @@
-import NextAuth from "next-auth";
+import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import {authBaseConfig} from "@/app/utils/auth-config";
-
-const { auth } = NextAuth(authBaseConfig);
 
 export async function middleware(request: NextRequest) {
-  const session = await auth();
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    secureCookie: request.nextUrl.protocol === "https:",
+  });
 
-  if (!session?.user) {
+  if (!token) {
     return NextResponse.next();
   }
 
   const isOnboardingRoute =
     request.nextUrl.pathname.startsWith("/onboarding");
 
-  const onboardingCompleted = (session.user as any)
-    ?.onboardingCompleted;
+  const onboardingCompleted = token.onboardingCompleted;
 
   if (onboardingCompleted === false && !isOnboardingRoute) {
     return NextResponse.redirect(

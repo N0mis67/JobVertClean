@@ -44,7 +44,13 @@ type TokenWithFlags = {
   userType?: UserType | null;
 };
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const {
+  handlers,
+  signIn,
+  signOut,
+  auth,
+  unstable_update: updateSession,
+} = NextAuth({
   adapter: PrismaAdapter(prisma) as Adapter,
   session: {
     strategy: "jwt",
@@ -101,7 +107,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       const enrichedToken = token as typeof token & TokenWithFlags;
 
       if (user) {
@@ -110,16 +116,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         enrichedToken.userType = user.userType;
         return enrichedToken;
       }
+
+      if (trigger === "update" && session?.user) {
+        const updatedUser = session.user as TokenWithFlags;
+        if (typeof updatedUser.onboardingCompleted === "boolean") {
+          enrichedToken.onboardingCompleted = updatedUser.onboardingCompleted;
+        }
+        if ("userType" in updatedUser) {
+          enrichedToken.userType = updatedUser.userType;
+        }
+      }
+
       if (enrichedToken.sub) {
-  const existingUser = await prisma.user.findUnique({
-    where: { id: enrichedToken.sub },
-    select: { onboardingCompleted: true, userType: true }
-  });
-  if (existingUser) {
-    enrichedToken.onboardingCompleted = existingUser.onboardingCompleted;
-    enrichedToken.userType = existingUser.userType;
-  }
-}
+        const existingUser = await prisma.user.findUnique({
+          where: { id: enrichedToken.sub },
+          select: { onboardingCompleted: true, userType: true },
+        });
+
+        if (existingUser) {
+          enrichedToken.onboardingCompleted = existingUser.onboardingCompleted;
+          enrichedToken.userType = existingUser.userType;
+        }
+      }
 
       return enrichedToken;
     },

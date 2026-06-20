@@ -14,6 +14,7 @@ import { inngest } from "./utils/inngest/client";
 import { JobPostStatus } from "@prisma/client";
 import { Resend } from "resend";
 import { generateUniqueJobSlug } from "./utils/jobSlug";
+import { updateSession } from "./utils/auth";
 
 const resend =
   process.env.RESEND_API_KEY !== undefined
@@ -63,6 +64,13 @@ export async function createCompany(data: z.infer<typeof companySchema>) {
           ...validatedData,
         },
       },
+    },
+  });
+
+  await updateSession({
+    user: {
+      onboardingCompleted: true,
+      userType: "COMPANY",
     },
   });
 
@@ -125,6 +133,13 @@ export async function createJobSeeker(data: z.infer<typeof jobSeekerSchema>) {
           ...validatedData,
         },
       },
+    },
+  });
+
+  await updateSession({
+    user: {
+      onboardingCompleted: true,
+      userType: "JOB_SEEKER",
     },
   });
 
