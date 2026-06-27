@@ -90,13 +90,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
     })
 
-    const companies = await prisma.company.findMany({
-      select: {
-        id: true,
-        updatedAt: true,
-      },
-    })
-
     const now = new Date()
 
     return [
@@ -111,13 +104,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.8,
         })),
 
-      // Entreprises
-      ...companies.map((company) => ({
-        url: `${BASE_URL}/company/${company.id}`,
-        lastModified: company.updatedAt,
-        changeFrequency: "weekly" as const,
-        priority: 0.7,
-      })),
     ]
   } catch (error) {
     console.error("Sitemap generation error:", error)
