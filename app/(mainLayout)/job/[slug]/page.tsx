@@ -154,6 +154,36 @@ function toIsoDate(value: Date | string | null | undefined): string | undefined 
   return date.toISOString();
 }
 
+function getStructuredLocation(location: string): {
+  locality?: string;
+  region?: string;
+} {
+  const trimmedLocation = location.trim();
+
+  if (!trimmedLocation) {
+    return {};
+  }
+
+  const parenthesizedRegion = trimmedLocation.match(/^(.+?)\s*\((.+?)\)$/);
+
+  if (parenthesizedRegion) {
+    return {
+      locality: parenthesizedRegion[1].trim(),
+      region: parenthesizedRegion[2].trim(),
+    };
+  }
+
+  const [locality, region] = trimmedLocation
+    .split(",")
+    .map((part) => part.trim());
+
+  if (locality && region) {
+    return { locality, region };
+  }
+
+  return { region: trimmedLocation };
+}
+
 function cleanJsonLd<T>(value: T): T | undefined {
   if (value === null || value === undefined) {
     return undefined;
@@ -197,6 +227,7 @@ async function findJobByParam(param: string) {
       id: true,
       slug: true,
       jobTitle: true,
+      employmentType: true,
       location: true,
     },
   });
@@ -219,6 +250,7 @@ async function findJobByParam(param: string) {
         id: true,
         slug: true,
         jobTitle: true,
+        employmentType: true,
         location: true,
       },
     });
@@ -241,6 +273,7 @@ async function findJobByParam(param: string) {
       id: true,
       slug: true,
       jobTitle: true,
+      employmentType: true,
       location: true,
     },
   });
@@ -320,8 +353,9 @@ export async function generateMetadata({
 
   return {
     title: `${job.jobTitle} - ${job.location} | JobVert`,
+    description: `${job.employmentType} · ${job.jobTitle} à ${job.location}. Postulez sur JobVert, le job board des métiers du paysage.`,
     alternates: {
-      canonical: `/job/${job.slug}`,
+      canonical: `https://jobvert.fr/job/${job.slug}`,
     },
   };
 }
@@ -368,6 +402,7 @@ export default async function JobPage({ params }: { params: Params }) {
   const descriptionHtml = getDescriptionHtml(data.jobDescription);
   const companyName = data.company.name?.trim() || FALLBACK_COMPANY_NAME;
   const jobLocation = data.location?.trim() || FALLBACK_LOCATION;
+  const structuredLocation = getStructuredLocation(jobLocation);
   const datePosted = toIsoDate(data.createdAt) ?? new Date().toISOString();
   const validThroughIso =
     toIsoDate(data.validThrough) ?? toIsoDate(validThrough) ?? datePosted;
@@ -397,7 +432,8 @@ export default async function JobPage({ params }: { params: Params }) {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
-        addressLocality: jobLocation,
+        addressLocality: structuredLocation.locality,
+        addressRegion: structuredLocation.region,
         addressCountry: "FR",
       },
     },
