@@ -22,6 +22,18 @@ export const jobSchema = z.object({
   jobTitle: z.string().min(2, "Job title must be at least 2 characters"),
   employmentType: z.string().min(1, "Please select an employment type"),
   location: z.string().min(1, "Please select a location"),
+  workplaceStreetAddress: z
+    .string()
+    .trim()
+    .min(1, "Workplace street address is required"),
+  workplacePostalCode: z
+    .string()
+    .trim()
+    .min(1, "Workplace postal code is required"),
+  workplaceAddressLocality: z
+    .string()
+    .trim()
+    .min(1, "Workplace city is required"),
   salaryFrom: z.number().min(1, "Salary from is required"),
   salaryTo: z.number().min(1, "Salary to is required"),
   jobDescription: z.string().min(1, "Job description is required"),

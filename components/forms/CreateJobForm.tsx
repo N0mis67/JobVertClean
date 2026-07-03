@@ -144,6 +144,9 @@ export function CreateJobForm({
       jobDescription: "",
       jobTitle: "",
       location: "",
+      workplaceStreetAddress: "",
+      workplacePostalCode: "",
+      workplaceAddressLocality: "",
       salaryFrom: 0,
       salaryTo: 0,
       companyLogo: companyLogo,
@@ -440,6 +443,50 @@ export function CreateJobForm({
                     form.formState.errors.salaryTo?.message}
                 </FormMessage>
               </FormItem>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <FormField
+                control={form.control}
+                name="workplaceStreetAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Adresse du lieu de travail</FormLabel>
+                    <FormControl>
+                      <Input placeholder="12 rue des Jardins" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="workplacePostalCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Code postal</FormLabel>
+                    <FormControl>
+                      <Input placeholder="75012" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="workplaceAddressLocality"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ville</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Paris" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <FormField

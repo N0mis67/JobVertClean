@@ -151,6 +151,9 @@ model JobPost {
   jobTitle        String
   employmentType  String
   location        String
+  workplaceStreetAddress   String?
+  workplacePostalCode      String?
+  workplaceAddressLocality String?
   salaryFrom      Int
   salaryTo        Int
   jobDescription  String

@@ -28,6 +28,9 @@ async function getJobPost({
       salaryTo: true,
       salaryFrom: true,
       location: true,
+      workplaceStreetAddress: true,
+      workplacePostalCode: true,
+      workplaceAddressLocality: true,
       employmentType: true,
       listingPlan: true,
       company: {

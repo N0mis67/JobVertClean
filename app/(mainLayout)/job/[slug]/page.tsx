@@ -292,6 +292,9 @@ async function getJobDetails(slug: string, userId?: string) {
         jobTitle: true,
         jobDescription: true,
         location: true,
+        workplaceStreetAddress: true,
+        workplacePostalCode: true,
+        workplaceAddressLocality: true,
         employmentType: true,
         salaryFrom: true,
         salaryTo: true,
@@ -432,7 +435,10 @@ export default async function JobPage({ params }: { params: Params }) {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
-        addressLocality: structuredLocation.locality,
+        streetAddress: data.workplaceStreetAddress,
+        postalCode: data.workplacePostalCode,
+        addressLocality:
+          data.workplaceAddressLocality ?? structuredLocation.locality,
         addressRegion: structuredLocation.region,
         addressCountry: "FR",
       },

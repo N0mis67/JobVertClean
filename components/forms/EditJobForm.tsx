@@ -43,6 +43,9 @@ interface iAppProps {
     id: string;
     employmentType: string;
     location: string;
+    workplaceStreetAddress: string | null;
+    workplacePostalCode: string | null;
+    workplaceAddressLocality: string | null;
     salaryFrom: number;
     salaryTo: number;
     jobDescription: string;
@@ -73,6 +76,9 @@ export function EditJobForm({ jobPost }: iAppProps) {
       jobDescription: jobPost.jobDescription,
       jobTitle: jobPost.jobTitle,
       location: jobPost.location,
+      workplaceStreetAddress: jobPost.workplaceStreetAddress ?? "",
+      workplacePostalCode: jobPost.workplacePostalCode ?? "",
+      workplaceAddressLocality: jobPost.workplaceAddressLocality ?? "",
       salaryFrom: jobPost.salaryFrom,
       salaryTo: jobPost.salaryTo,
       companyLogo: jobPost.company.logo,
@@ -198,6 +204,50 @@ export function EditJobForm({ jobPost }: iAppProps) {
                     form.formState.errors.salaryTo?.message}
                 </FormMessage>
               </FormItem>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <FormField
+                control={form.control}
+                name="workplaceStreetAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Adresse du lieu de travail</FormLabel>
+                    <FormControl>
+                      <Input placeholder="12 rue des Jardins" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="workplacePostalCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Code postal</FormLabel>
+                    <FormControl>
+                      <Input placeholder="75012" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="workplaceAddressLocality"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ville</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Paris" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <FormField
