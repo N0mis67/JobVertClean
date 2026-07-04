@@ -23,7 +23,6 @@ import {
 import { Textarea } from "../ui/textarea";
 import { XIcon } from "lucide-react";
 import { Button } from "../ui/button";
-import Image from "next/image";
 import { toast } from "sonner";
 import { UploadDropzone } from "../general/UploadThingReExport";
 import { useState } from "react";
@@ -36,6 +35,7 @@ import JobDescriptionEditor from "../richTextEditor/JobDescriptionEditor";
 import BenefitsSelector from "../general/BenefitsSelector";
 import { updateJobPost } from "@/app/actions";
 import { ListingPlan } from "@prisma/client";
+import { CompanyLogo } from "../general/CompanyLogo";
 
 interface iAppProps {
   jobPost: {
@@ -408,12 +408,13 @@ export function EditJobForm({ jobPost }: iAppProps) {
                     <div>
                       {field.value ? (
                         <div className="relative w-fit">
-                          <Image
+                          <CompanyLogo
                             src={field.value}
+                            name={form.watch("companyName") || jobPost.company.name}
                             alt="Company Logo"
                             width={100}
                             height={100}
-                            className="rounded-lg"
+                            className="h-[100px] w-[100px] rounded-lg object-cover"
                           />
                           <Button
                             type="button"

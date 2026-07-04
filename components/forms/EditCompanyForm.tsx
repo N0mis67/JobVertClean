@@ -25,8 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import Image from "next/image";
 import { XIcon } from "lucide-react";
+import { CompanyLogo } from "@/components/general/CompanyLogo";
 import { UploadDropzone } from "@/components/general/UploadThingReExport";
 import { toast } from "sonner";
 import { companySchema } from "@/app/utils/zodSchemas";
@@ -226,12 +226,13 @@ export function EditCompanyForm({ company }: EditCompanyFormProps) {
                 <div>
                   {field.value ? (
                     <div className="relative w-fit">
-                      <Image
+                      <CompanyLogo
                         src={field.value}
+                        name={form.watch("name") || company.name}
                         alt="Company Logo"
                         width={120}
                         height={120}
-                        className="rounded-lg"
+                        className="h-[120px] w-[120px] rounded-lg object-cover"
                       />
                       <Button
                         type="button"
@@ -247,11 +248,16 @@ export function EditCompanyForm({ company }: EditCompanyFormProps) {
                     <UploadDropzone
                       endpoint="imageUploader"
                       onClientUploadComplete={(res) => {
-                        const url = res?.[0]?.ufsUrl;
-                        if (url) {
-                          field.onChange(url);
-                          toast.success("Logo téléchargé avec succès !");
+                        const url = res?.[0]?.ufsUrl ?? res?.[0]?.url;
+                        if (!url) {
+                          toast.error(
+                            "Impossible de récupérer l'URL du logo. Veuillez réessayer."
+                          );
+                          return;
                         }
+
+                        field.onChange(url);
+                        toast.success("Logo téléchargé avec succès !");
                       }}
                       onUploadError={() => {
                         toast.error(

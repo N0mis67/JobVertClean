@@ -1,6 +1,7 @@
 "use client";
 
 import { signOutToHome } from "@/app/utils/auth-actions";
+import { CompanyLogo } from "@/components/general/CompanyLogo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -49,7 +50,7 @@ export function UserDropdown({
         .toUpperCase()
         .slice(0, 2)
     : "?";
-  const avatarSrc = companyLogo ?? image ?? undefined;
+  const avatarSrc = image ?? undefined;
 
   return (
     <DropdownMenu>
@@ -59,7 +60,16 @@ export function UserDropdown({
           whileHover={{ scale: 1.05 }}
         >
           <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center overflow-hidden">
-            {avatarSrc ? (
+            {companyLogo ? (
+              <CompanyLogo
+                src={companyLogo}
+                name={displayName ?? "Profile"}
+                alt="Profile image"
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-full"
+              />
+            ) : avatarSrc ? (
               <Avatar className="h-10 w-10">
                 <AvatarImage src={avatarSrc} alt="Profile image" />
                 <AvatarFallback className="bg-transparent text-white/80">

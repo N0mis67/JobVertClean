@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CompanyLogo } from "@/components/general/CompanyLogo";
 import {
   Table,
   TableBody,
@@ -18,7 +19,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { JobPostStatus } from "@prisma/client";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -121,11 +121,10 @@ export default async function CompanyProfilePage({
       <section className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-start gap-4">
           <div className="relative size-20 md:size-24 overflow-hidden rounded-xl border bg-muted">
-            <Image
-              src={
-                company.logo || `https://avatar.vercel.sh/${company.name}?size=120`
-              }
-              alt={company.name}
+            <CompanyLogo
+              src={company.logo}
+              name={company.name}
+              alt={`${company.name} logo`}
               fill
               sizes="96px"
               className="object-cover"

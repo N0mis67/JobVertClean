@@ -6,7 +6,7 @@ export const companySchema = z.object({
   about: z
     .string()
     .min(10, "Please provide more information about your company"),
-  logo: z.string().min(1, "Please upload a logo"),
+  logo: z.string().url("Veuillez téléverser un logo valide"),
   website: z.string().url("Please enter a valid website URL"),
   xAccount: z.string().optional(),
   defaultListingPlan: z.enum(["Bonsai", "Arbuste", "Forêt"]).nullable().optional(),
@@ -40,7 +40,7 @@ export const jobSchema = z.object({
   benefits: z.array(z.string()).min(1, "Please select at least one benefit"),
   companyName: z.string().min(1, "Company name is required"),
   companyLocation: z.string().min(1, "Company location is required"),
-  companyLogo: z.string().min(1, "Company logo is required"),
+  companyLogo: z.string().url("Veuillez téléverser un logo valide"),
   companyWebsite: z.string().min(1, "Company website is required"),
   companyXAccount: z.string().optional(),
   companyDescription: z.string().min(1, "Company description is required"),

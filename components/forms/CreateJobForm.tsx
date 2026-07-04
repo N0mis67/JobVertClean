@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, type ComponentType,type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import { z } from "zod";
 import { useForm, type ControllerRenderProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,6 +47,7 @@ import {
 import { Textarea } from "../ui/textarea";
 import { PlanUsageSummary } from "../subscription/PlanUsageSummary";
 import type { SalaryRangeSelectorProps } from "../general/SalaryRangeSelector";
+import { CompanyLogo } from "../general/CompanyLogo";
 
 const BenefitsSelector = dynamic(
   () => import("../general/BenefitsSelector"),
@@ -655,12 +655,13 @@ export function CreateJobForm({
                     <div>
                       {field.value ? (
                         <div className="relative w-fit">
-                          <Image
+                          <CompanyLogo
                             src={field.value}
+                            name={form.watch("companyName") || companyName}
                             alt="Company Logo"
                             width={100}
                             height={100}
-                            className="rounded-lg"
+                            className="h-[100px] w-[100px] rounded-lg object-cover"
                           />
                           <Button
                             type="button"

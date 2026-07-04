@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import Image from "next/image";
 import { XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { companySchema } from "@/app/utils/zodSchemas";
@@ -32,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { countryList } from "@/app/utils/countriesList";
 import { UploadDropzone } from "@/components/general/UploadThingReExport";
+import { CompanyLogo } from "@/components/general/CompanyLogo";
 import type { ListingPlanName } from "@/types/subscription";
 
 const ALWAYS_ASK_VALUE = "always-ask";
@@ -180,12 +180,13 @@ export default function CompanyForm() {
                     <div>
                     {field.value ? (
                     <div className="relative w-fit">
-                      <Image
+                      <CompanyLogo
                         src={field.value}
+                        name={form.watch("name") || "Entreprise"}
                         alt="Company Logo"
                         width={100}
                         height={100}
-                        className="rounded-lg"
+                        className="h-[100px] w-[100px] rounded-lg object-cover"
                       />
                       <Button
                         type="button"
@@ -201,7 +202,15 @@ export default function CompanyForm() {
                     <UploadDropzone
                       endpoint="imageUploader"
                       onClientUploadComplete={(res) => {
-                        field.onChange(res[0].ufsUrl);
+                        const url = res?.[0]?.ufsUrl ?? res?.[0]?.url;
+                        if (!url) {
+                          toast.error(
+                            "Impossible de récupérer l'URL du logo. Veuillez réessayer."
+                          );
+                          return;
+                        }
+
+                        field.onChange(url);
                         toast.success("Logo téléchargé avec succès !");
                       }}
                       onUploadError={() => {

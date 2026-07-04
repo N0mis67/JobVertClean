@@ -2,16 +2,17 @@ import { saveJobPost, unsaveJobPost } from "@/app/actions";
 import { auth } from "@/app/utils/auth";
 import { getFlagEmoji } from "@/app/utils/countriesList";
 import { prisma } from "@/app/utils/db";
+import { getSafeCompanyLogoUrl } from "@/app/utils/imageUrl";
 import { isUuid } from "@/app/utils/jobSlug";
 import { benefits } from "@/app/utils/listOfBenefits";
 import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
 import { JsonToHtml } from "@/components/general/JsonToHtml";
+import { CompanyLogo } from "@/components/general/CompanyLogo";
 import { SaveJobButton } from "@/components/general/SubmitButtons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Heart } from "lucide-react";
@@ -427,9 +428,7 @@ export default async function JobPage({ params }: { params: Params }) {
       "@type": "Organization",
       name: companyName,
       sameAs: data.company.website?.trim(),
-      logo:
-        data.company.logo ??
-        `https://avatar.vercel.sh/${encodeURIComponent(companyName)}`,
+      logo: getSafeCompanyLogoUrl(data.company.logo, companyName),
     },
     jobLocation: {
       "@type": "Place",
@@ -610,15 +609,13 @@ export default async function JobPage({ params }: { params: Params }) {
           <Card className="p-6">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <Image
-                  src={
-                    data.company.logo ??
-                    `https://avatar.vercel.sh/${data.company.name}`
-                  }
-                  alt={data.company.name}
+                <CompanyLogo
+                  src={data.company.logo}
+                  name={data.company.name}
+                  alt={`${data.company.name} logo`}
                   width={48}
                   height={48}
-                  className="rounded-full size-12"
+                  className="rounded-full size-12 object-cover"
                 />
                 <div>
                   <h3 className="font-semibold">{data.company.name}</h3>

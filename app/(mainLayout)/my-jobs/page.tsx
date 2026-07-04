@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import Image from "next/image";
+import { CompanyLogo } from "@/components/general/CompanyLogo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PenBoxIcon, User2, XCircle, CopyPlus } from "lucide-react";
+import { MoreHorizontal, PenBoxIcon, XCircle, CopyPlus } from "lucide-react";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/general/EmptyState";
@@ -178,19 +178,14 @@ const MyJobs = async () => {
                 {data.map((listing) => (
                   <TableRow key={listing.id}>
                     <TableCell>
-                      {listing.company.logo ? (
-                        <Image
-                          src={listing.company.logo}
-                          alt={`${listing.company.name} logo`}
-                          width={40}
-                          height={40}
-                          className="rounded-md size-10"
-                        />
-                      ) : (
-                        <div className="bg-red-500 size-10 rounded-lg flex items-center justify-center">
-                          <User2 className="size-6 text-white" />
-                        </div>
-                      )}
+                      <CompanyLogo
+                        src={listing.company.logo}
+                        name={listing.company.name}
+                        alt={`${listing.company.name} logo`}
+                        width={40}
+                        height={40}
+                        className="rounded-md size-10"
+                      />
                     </TableCell>
                     <TableCell className="font-medium">
                       {listing.company.name}

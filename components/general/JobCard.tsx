@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Clock, Euro, MapPin, User2 } from "lucide-react";
+import { Clock, Euro, MapPin } from "lucide-react";
 import { formatCurrency } from "@/app/utils/formatCurrency";
-import Image from "next/image";
+import { CompanyLogo } from "@/components/general/CompanyLogo";
 import { formatRelativeTime } from "@/app/utils/formatRelativeTime";
 
 interface iAppProps {
@@ -96,19 +96,14 @@ export function JobCard({ job, index = 0 }: iAppProps) {
                     whileHover={{ scale: 1.1, rotate: 5 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {job.company.logo ? (
-                        <Image
+                    <CompanyLogo
                         src={job.company.logo}
-                        alt={job.company.name}
+                        name={job.company.name}
+                        alt={`${job.company.name} logo`}
                         width={40}
                         height={40}
                         className="w-10 h-10 rounded-lg object-cover"
                       />
-                    ) : (
-                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                        <User2 className="w-6 h-6 text-green-400" />
-                      </div>
-                    )}
                     </motion.div>
                     <div>
                     <motion.h3 
