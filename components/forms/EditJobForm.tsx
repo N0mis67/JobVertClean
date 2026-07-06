@@ -27,14 +27,20 @@ import { toast } from "sonner";
 import { UploadDropzone } from "../general/UploadThingReExport";
 import { useState } from "react";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { jobSchema } from "@/app/utils/zodSchemas";
+import {
+  CONTRACT_TYPE_OPTIONS,
+  EMPLOYMENT_TYPE_OPTIONS,
+  getEmploymentTypeValue,
+  inferContractTypeFromEmploymentType,
+} from "@/app/utils/jobOptions";
 import { SalaryRangeSelector } from "../general/SalaryRangeSelector";
 import JobDescriptionEditor from "../richTextEditor/JobDescriptionEditor";
 import BenefitsSelector from "../general/BenefitsSelector";
 import { updateJobPost } from "@/app/actions";
-import { ListingPlan } from "@prisma/client";
+import { ContractType, ListingPlan } from "@prisma/client";
 import { CompanyLogo } from "../general/CompanyLogo";
 
 interface iAppProps {
@@ -42,6 +48,7 @@ interface iAppProps {
     jobTitle: string;
     id: string;
     employmentType: string;
+    contractType: ContractType | null;
     location: string;
     workplaceStreetAddress: string | null;
     workplacePostalCode: string | null;
@@ -64,7 +71,7 @@ interface iAppProps {
 
 export function EditJobForm({ jobPost }: iAppProps) {
   const form = useForm<z.infer<typeof jobSchema>>({
-    resolver: zodResolver(jobSchema),
+    resolver: zodResolver(jobSchema) as Resolver<z.infer<typeof jobSchema>>,
     defaultValues: {
       benefits: jobPost.benefits,
       companyDescription: jobPost.company.about,
@@ -72,7 +79,11 @@ export function EditJobForm({ jobPost }: iAppProps) {
       companyName: jobPost.company.name,
       companyWebsite: jobPost.company.website,
       companyXAccount: jobPost.company.xAccount || "",
-      employmentType: jobPost.employmentType,
+      employmentType: getEmploymentTypeValue(jobPost.employmentType),
+      contractType:
+        jobPost.contractType ??
+        inferContractTypeFromEmploymentType(jobPost.employmentType) ??
+        undefined,
       jobDescription: jobPost.jobDescription,
       jobTitle: jobPost.jobTitle,
       location: jobPost.location,
@@ -130,23 +141,55 @@ export function EditJobForm({ jobPost }: iAppProps) {
                 name="employmentType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Type de job</FormLabel>
+                    <FormLabel>Temps de travail</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select Employment Type" />
+                          <SelectValue placeholder="Sélectionner le temps de travail" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectLabel>Type de job</SelectLabel>
-                          <SelectItem value="Temps plein">Temps plein</SelectItem>
-                          <SelectItem value="Temps partiel">Temps partiel</SelectItem>
-                          <SelectItem value="Intérim">Intérim</SelectItem>
-                          <SelectItem value="apprentissage">Stage/Apprenti</SelectItem>
+                          <SelectLabel>Temps de travail</SelectLabel>
+                          {EMPLOYMENT_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contractType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type de contrat</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un type de contrat" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Type de contrat</SelectLabel>
+                          {CONTRACT_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectGroup>
                       </SelectContent>
                     </Select>

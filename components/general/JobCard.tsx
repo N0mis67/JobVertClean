@@ -6,6 +6,10 @@ import { Clock, Euro, MapPin } from "lucide-react";
 import { formatCurrency } from "@/app/utils/formatCurrency";
 import { CompanyLogo } from "@/components/general/CompanyLogo";
 import { formatRelativeTime } from "@/app/utils/formatRelativeTime";
+import {
+  getContractTypeLabel,
+  inferContractTypeFromEmploymentType,
+} from "@/app/utils/jobOptions";
 
 interface iAppProps {
     job: {
@@ -16,6 +20,7 @@ interface iAppProps {
         salaryFrom: number;
         salaryTo: number;
         employmentType: string;
+        contractType?: string | null;
         location: string;
         createdAt: Date;
         company: {
@@ -68,6 +73,9 @@ export function JobCard({ job, index = 0 }: iAppProps) {
     const salary = `${formatCurrency(job.salaryFrom)} - ${formatCurrency(job.salaryTo)}`;
     const postedTime = formatRelativeTime(job.createdAt);
     const adPreview = getFirstLineOfAdContent(job.jobDescription) || job.company.about;
+    const contractTypeLabel = getContractTypeLabel(
+      job.contractType ?? inferContractTypeFromEmploymentType(job.employmentType)
+    );
 
     return (
         <Link href={`/job/${job.slug}`} className="block">
@@ -115,6 +123,14 @@ export function JobCard({ job, index = 0 }: iAppProps) {
                     </motion.h3>
                     <div className="flex items-center gap-2">
                       <span className="text-white/60 text-sm">{job.company.name}</span>
+                      {contractTypeLabel ? (
+                        <>
+                          <span className="text-white/40">•</span>
+                          <span className="text-white/60 text-sm">
+                            {contractTypeLabel}
+                          </span>
+                        </>
+                      ) : null}
                       <span className="text-white/40">•</span>
                       <span className="text-white/60 text-sm">{job.employmentType}</span>
                     </div>

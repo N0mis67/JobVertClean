@@ -32,6 +32,7 @@ async function getJobPost({
       workplacePostalCode: true,
       workplaceAddressLocality: true,
       employmentType: true,
+      contractType: true,
       listingPlan: true,
       company: {
         select: {

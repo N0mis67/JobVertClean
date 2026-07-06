@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CONTRACT_TYPE_VALUES } from "./jobOptions";
 
 export const companySchema = z.object({
   name: z.string().min(2, "Company name must be at least 2 characters"),
@@ -20,7 +21,12 @@ export const jobSeekerSchema = z.object({
 
 export const jobSchema = z.object({
   jobTitle: z.string().min(2, "Job title must be at least 2 characters"),
-  employmentType: z.string().min(1, "Please select an employment type"),
+  employmentType: z.enum(["Temps plein", "Temps partiel"], {
+    error: "Please select a work schedule",
+  }),
+  contractType: z.enum(CONTRACT_TYPE_VALUES, {
+    error: "Please select a contract type",
+  }),
   location: z.string().min(1, "Please select a location"),
   workplaceStreetAddress: z
     .string()

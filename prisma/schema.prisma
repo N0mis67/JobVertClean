@@ -60,6 +60,16 @@ enum ListingPlan {
   Forêt
 }
 
+enum ContractType {
+  CDI
+  CDD
+  INTERIM
+  STAGE
+  APPRENTISSAGE
+  FREELANCE
+  SAISONNIER
+}
+
 
 model Session {
   sessionToken String   @unique
@@ -150,6 +160,7 @@ model JobPost {
   slug            String @unique
   jobTitle        String
   employmentType  String
+  contractType    ContractType?
   location        String
   workplaceStreetAddress   String?
   workplacePostalCode      String?

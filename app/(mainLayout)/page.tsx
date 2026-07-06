@@ -14,6 +14,7 @@ type SearchParamsProps = {
   searchParams: Promise<{
     page?: string;
     jobTypes?: string;
+    contractTypes?: string;
     location?: string;
   }>;
 };
@@ -22,10 +23,11 @@ export default async function Home({ searchParams }: SearchParamsProps) {
   const params = await searchParams;
   const currentPage = Number(params.page) || 1;
   const jobTypes = params.jobTypes?.split(",") || [];
+  const contractTypes = params.contractTypes?.split(",") || [];
   const location = params.location || "";
 
   // Create a composite key from all filter parameters
-  const filterKey = `page=${currentPage};types=${jobTypes.join(",")};location=${location}`;
+  const filterKey = `page=${currentPage};types=${jobTypes.join(",")};contracts=${contractTypes.join(",")};location=${location}`;
 
   return (
     <main>
@@ -42,6 +44,7 @@ export default async function Home({ searchParams }: SearchParamsProps) {
               <JobListings
                 currentPage={currentPage}
                 jobTypes={jobTypes}
+                contractTypes={contractTypes}
                 location={location}
               />
             </Suspense>

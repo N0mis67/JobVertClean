@@ -5,13 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { ChevronDown, X } from "lucide-react";
 import { countryList } from "@/app/utils/countriesList";
-
-const jobTypes = [
-  { label: "Temps plein", value: "Temps plein" },
-  { label: "Temps partiel", value: "Temps partiel" },
-  { label: "Intérim", value: "Intérim" },
-  { label: "Stage/Apprenti", value: "apprentissage" },
-];
+import {
+  CONTRACT_TYPE_OPTIONS,
+  EMPLOYMENT_TYPE_OPTIONS,
+} from "@/app/utils/jobOptions";
 
 export function JobFilters() {
   const router = useRouter();
@@ -20,6 +17,8 @@ export function JobFilters() {
 
   //get currnet filters from the URL
   const currentJobTypes = searchParams.get("jobTypes")?.split(",") || [];
+  const currentContractTypes =
+    searchParams.get("contractTypes")?.split(",") || [];
   const currentLocation = searchParams.get("location") || "";
 
   function clearAllFilter() {
@@ -53,6 +52,20 @@ export function JobFilters() {
     const newValue = Array.from(current).join(",");
 
     router.push(`?${createQueryString("jobTypes", newValue)}`);
+  }
+
+  function handleContractTypeChange(contractType: string, checked: boolean) {
+    const current = new Set(currentContractTypes);
+
+    if (checked) {
+      current.add(contractType);
+    } else {
+      current.delete(contractType);
+    }
+
+    const newValue = Array.from(current).join(",");
+
+    router.push(`?${createQueryString("contractTypes", newValue)}`);
   }
 
   function handleLocationChange(location: string) {
@@ -99,11 +112,11 @@ export function JobFilters() {
         </motion.button>
       </div>
 
-      {/* Type Filter */}
+      {/* Work Schedule Filter */}
       <motion.div variants={itemVariants} className="mb-6">
-        <h4 className="text-white mb-4">Type</h4>
+        <h4 className="text-white mb-4">Temps de travail</h4>
         <div className="space-y-3">
-          {jobTypes.map((option) => (
+          {EMPLOYMENT_TYPE_OPTIONS.map((option) => (
             <motion.label
               key={option.value}
               className="flex items-center gap-3 text-white/70 hover:text-white cursor-pointer group"
@@ -134,6 +147,49 @@ export function JobFilters() {
           ))}
         </div>
          </motion.div>
+
+      {/* Contract Type Filter */}
+      <motion.div variants={itemVariants} className="mb-6">
+        <h4 className="text-white mb-4">Type de contrat</h4>
+        <div className="space-y-3">
+          {CONTRACT_TYPE_OPTIONS.map((option) => (
+            <motion.label
+              key={option.value}
+              className="flex items-center gap-3 text-white/70 hover:text-white cursor-pointer group"
+              whileHover={{ x: 4 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  name="contractType"
+                  value={option.value}
+                  className="peer sr-only"
+                  checked={currentContractTypes.includes(option.value)}
+                  onChange={(event) =>
+                    handleContractTypeChange(
+                      option.value,
+                      event.target.checked
+                    )
+                  }
+                />
+                <div className="w-5 h-5 rounded-full border-2 border-white/30 peer-checked:border-green-400 transition-all group-hover:border-white/50">
+                  <motion.div
+                    className="w-full h-full rounded-full bg-green-400 scale-0 peer-checked:scale-50"
+                    initial={false}
+                    animate={{
+                      scale: currentContractTypes.includes(option.value)
+                        ? 0.5
+                        : 0,
+                    }}
+                  />
+                </div>
+              </div>
+              <span className="text-sm">{option.label}</span>
+            </motion.label>
+          ))}
+        </div>
+      </motion.div>
 
       {/* Localisation Filter */}
       <motion.div variants={itemVariants}>

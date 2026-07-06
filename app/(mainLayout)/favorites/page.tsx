@@ -19,6 +19,7 @@ async function getFavorites(userId: string) {
           salaryFrom: true,
           salaryTo: true,
           employmentType: true,
+          contractType: true,
           location: true,
           createdAt: true,
           company: {

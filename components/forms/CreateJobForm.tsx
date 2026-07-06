@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType,type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { z } from "zod";
+import type { Resolver } from "react-hook-form";
 import { useForm, type ControllerRenderProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { XIcon } from "lucide-react";
@@ -11,6 +12,10 @@ import { createJob } from "@/app/actions";
 import { countryList } from "@/app/utils/countriesList";
 import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
 import { jobSchema } from "@/app/utils/zodSchemas";
+import {
+  CONTRACT_TYPE_OPTIONS,
+  EMPLOYMENT_TYPE_OPTIONS,
+} from "@/app/utils/jobOptions";
 import { cn } from "@/lib/utils";
 import type {
   AutoSelectionReason,
@@ -132,7 +137,7 @@ export function CreateJobForm({
   defaultListingPlan,
 }: CreateJobFormProps) {
   const form = useForm<z.infer<typeof jobSchema>>({
-    resolver: zodResolver(jobSchema),
+    resolver: zodResolver(jobSchema) as Resolver<z.infer<typeof jobSchema>>,
     defaultValues: {
       benefits: [],
       companyDescription: companyAbout,
@@ -140,7 +145,8 @@ export function CreateJobForm({
       companyName: companyName,
       companyWebsite: companyWebsite || "",
       companyXAccount: companyXAccount || "",
-      employmentType: "",
+      employmentType: undefined,
+      contractType: undefined,
       jobDescription: "",
       jobTitle: "",
       location: "",
@@ -365,23 +371,55 @@ export function CreateJobForm({
                 name="employmentType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Type d&apos;emploi</FormLabel>
+                    <FormLabel>Temps de travail</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un type d'emploi" />
+                          <SelectValue placeholder="Sélectionner le temps de travail" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectLabel>Type d&apos;emploi</SelectLabel>
-                          <SelectItem value="Temps plein">Temps plein</SelectItem>
-                          <SelectItem value="Temps partiel">Temps partiel</SelectItem>
-                          <SelectItem value="Intérim">Intérim</SelectItem>
-                          <SelectItem value="apprentissage">Stage/Apprenti</SelectItem>
+                          <SelectLabel>Temps de travail</SelectLabel>
+                          {EMPLOYMENT_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contractType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type de contrat</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un type de contrat" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Type de contrat</SelectLabel>
+                          {CONTRACT_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectGroup>
                       </SelectContent>
                     </Select>

@@ -3,6 +3,11 @@ import { auth } from "@/app/utils/auth";
 import { getFlagEmoji } from "@/app/utils/countriesList";
 import { prisma } from "@/app/utils/db";
 import { getSafeCompanyLogoUrl } from "@/app/utils/imageUrl";
+import {
+  getContractTypeLabel,
+  inferContractTypeFromEmploymentType,
+  type ContractTypeValue,
+} from "@/app/utils/jobOptions";
 import { isUuid } from "@/app/utils/jobSlug";
 import { benefits } from "@/app/utils/listOfBenefits";
 import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
@@ -56,29 +61,33 @@ function getLegacySlugCandidates(param: string): string[] {
   return [...new Set(candidates)];
 }
 
-function getEmploymentType(employmentType: string): string {
-  const normalized = employmentType.trim().toLowerCase();
+function getStructuredEmploymentType(
+  contractType: ContractTypeValue | string | null | undefined,
+  employmentType: string | null | undefined
+): string {
+  const resolvedContractType =
+    contractType ?? inferContractTypeFromEmploymentType(employmentType);
 
-  switch (normalized) {
-    case "cdi":
-      return "FULL_TIME";
-    case "cdd":
+  if (resolvedContractType === "CDI") {
+    return employmentType?.trim().toLowerCase() === "temps partiel"
+      ? "PART_TIME"
+      : "FULL_TIME";
+  }
+
+  switch (resolvedContractType) {
+    case "CDD":
+    case "INTERIM":
+    case "SAISONNIER":
       return "TEMPORARY";
-    case "freelance":
+    case "FREELANCE":
       return "CONTRACTOR";
-    case "internship":
-      return "INTERN";
-    case "temps plein":
-      return "FULL_TIME";
-    case "temps partiel":
-      return "PART_TIME";
-    case "intérim":
-    case "interim":
-      return "TEMPORARY";
-    case "apprentissage":
+    case "STAGE":
+    case "APPRENTISSAGE":
       return "INTERN";
     default:
-      return "OTHER";
+      return employmentType?.trim().toLowerCase() === "temps partiel"
+        ? "PART_TIME"
+        : "OTHER";
   }
 }
 
@@ -229,6 +238,7 @@ async function findJobByParam(param: string) {
       slug: true,
       jobTitle: true,
       employmentType: true,
+      contractType: true,
       location: true,
     },
   });
@@ -252,6 +262,7 @@ async function findJobByParam(param: string) {
         slug: true,
         jobTitle: true,
         employmentType: true,
+        contractType: true,
         location: true,
       },
     });
@@ -275,6 +286,7 @@ async function findJobByParam(param: string) {
       slug: true,
       jobTitle: true,
       employmentType: true,
+      contractType: true,
       location: true,
     },
   });
@@ -297,6 +309,7 @@ async function getJobDetails(slug: string, userId?: string) {
         workplacePostalCode: true,
         workplaceAddressLocality: true,
         employmentType: true,
+        contractType: true,
         salaryFrom: true,
         salaryTo: true,
         benefits: true,
@@ -355,9 +368,16 @@ export async function generateMetadata({
     };
   }
 
+  const contractTypeLabel =
+    getContractTypeLabel(job.contractType) ??
+    getContractTypeLabel(inferContractTypeFromEmploymentType(job.employmentType));
+  const contractPrefix = contractTypeLabel
+    ? `${contractTypeLabel} · ${job.employmentType}`
+    : job.employmentType;
+
   return {
     title: `${job.jobTitle} - ${job.location} | JobVert`,
-    description: `${job.employmentType} · ${job.jobTitle} à ${job.location}. Postulez sur JobVert, le job board des métiers du paysage.`,
+    description: `${contractPrefix} · ${job.jobTitle} à ${job.location}. Postulez sur JobVert, le job board des métiers du paysage.`,
     alternates: {
       canonical: `https://jobvert.fr/job/${job.slug}`,
     },
@@ -406,6 +426,11 @@ export default async function JobPage({ params }: { params: Params }) {
   const descriptionHtml = getDescriptionHtml(data.jobDescription);
   const companyName = data.company.name?.trim() || FALLBACK_COMPANY_NAME;
   const jobLocation = data.location?.trim() || FALLBACK_LOCATION;
+  const contractTypeLabel =
+    getContractTypeLabel(data.contractType) ??
+    getContractTypeLabel(
+      inferContractTypeFromEmploymentType(data.employmentType)
+    );
   const structuredLocation = getStructuredLocation(jobLocation);
   const datePosted = toIsoDate(data.createdAt) ?? new Date().toISOString();
   const validThroughIso =
@@ -423,7 +448,10 @@ export default async function JobPage({ params }: { params: Params }) {
     description: descriptionHtml,
     datePosted,
     validThrough: validThroughIso,
-    employmentType: getEmploymentType(data.employmentType || "CDI"),
+    employmentType: getStructuredEmploymentType(
+      data.contractType,
+      data.employmentType
+    ),
     hiringOrganization: {
       "@type": "Organization",
       name: companyName,
@@ -490,6 +518,11 @@ export default async function JobPage({ params }: { params: Params }) {
               <div className="flex items-center gap-2 mt-2">
                 <span className="font-medium">{data.company.name}</span>
 
+                {contractTypeLabel ? (
+                  <Badge className="rounded-full" variant="secondary">
+                    {contractTypeLabel}
+                  </Badge>
+                ) : null}
                 <Badge className="rounded-full" variant="secondary">
                   {data.employmentType}
                 </Badge>
@@ -594,7 +627,13 @@ export default async function JobPage({ params }: { params: Params }) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">
-                    Type d&apos;emploi
+                    Type de contrat
+                  </span>
+                  <span className="text-sm">{contractTypeLabel ?? "Non précisé"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Temps de travail
                   </span>
                   <span className="text-sm">{data.employmentType}</span>
                 </div>

@@ -3,20 +3,34 @@ import { EmptyState } from "./EmptyState";
 import { PaginationComponent } from "./PaginationComponent";
 import { JobCard } from "./JobCard";
 import { JobPostStatus } from "@prisma/client";
+import {
+  CONTRACT_TYPE_VALUES,
+  type ContractTypeValue,
+} from "@/app/utils/jobOptions";
 
 async function getJobs(
   page: number = 1,
   pageSize: number = 10,
   jobTypes: string[] = [],
+  contractTypes: string[] = [],
   location: string = ""
 ) {
   const skip = (page - 1) * pageSize;
+  const validContractTypes = contractTypes.filter(
+    (contractType): contractType is ContractTypeValue =>
+      CONTRACT_TYPE_VALUES.includes(contractType as ContractTypeValue)
+  );
 
   const where = {
     status: JobPostStatus.ACTIVE,
     ...(jobTypes.length > 0 && {
       employmentType: {
         in: jobTypes,
+      },
+    }),
+    ...(validContractTypes.length > 0 && {
+      contractType: {
+        in: validContractTypes,
       },
     }),
     ...(location &&
@@ -38,6 +52,7 @@ async function getJobs(
         salaryFrom: true,
         salaryTo: true,
         employmentType: true,
+        contractType: true,
         location: true,
         createdAt: true,
         company: {
@@ -66,17 +81,19 @@ async function getJobs(
 export default async function JobListings({
   currentPage,
   jobTypes,
+  contractTypes,
   location,
 }: {
   currentPage: number;
   jobTypes: string[];
+  contractTypes: string[];
   location: string;
 }) {
   const {
     jobs,
     totalPages,
     currentPage: page,
-  } = await getJobs(currentPage, 7, jobTypes, location);
+  } = await getJobs(currentPage, 7, jobTypes, contractTypes, location);
 
   return (
     <>
