@@ -2,7 +2,7 @@ import { prisma } from "@/app/utils/db";
 import { EmptyState } from "./EmptyState";
 import { PaginationComponent } from "./PaginationComponent";
 import { JobCard } from "./JobCard";
-import { JobPostStatus } from "@prisma/client";
+import { JobPostStatus, Prisma } from "@prisma/client";
 import {
   CONTRACT_TYPE_VALUES,
   type ContractTypeValue,
@@ -13,7 +13,15 @@ async function getJobs(
   pageSize: number = 10,
   jobTypes: string[] = [],
   contractTypes: string[] = [],
-  location: string = ""
+  location: string = "",
+  keyword: string = "",
+  salaryMin?: number,
+  salaryMax?: number,
+  city: string = "",
+  postalCode: string = "",
+  benefits: string[] = [],
+  company: string = "",
+  sort: string = "recent"
 ) {
   const skip = (page - 1) * pageSize;
   const validContractTypes = contractTypes.filter(
@@ -21,7 +29,16 @@ async function getJobs(
       CONTRACT_TYPE_VALUES.includes(contractType as ContractTypeValue)
   );
 
-  const where = {
+  const orderBy: Prisma.JobPostOrderByWithRelationInput =
+    sort === "oldest"
+      ? { createdAt: "asc" }
+      : sort === "salary_desc"
+        ? { salaryTo: "desc" }
+        : sort === "salary_asc"
+          ? { salaryFrom: "asc" }
+          : { createdAt: "desc" };
+
+  const where: Prisma.JobPostWhereInput = {
     status: JobPostStatus.ACTIVE,
     ...(jobTypes.length > 0 && {
       employmentType: {
@@ -37,6 +54,51 @@ async function getJobs(
       location !== "worldwide" && {
         location: location,
       }),
+    ...(keyword && {
+      OR: [
+        { jobTitle: { contains: keyword, mode: "insensitive" } },
+        { jobDescription: { contains: keyword, mode: "insensitive" } },
+        {
+          company: {
+            name: { contains: keyword, mode: "insensitive" },
+          },
+        },
+      ],
+    }),
+    ...(salaryMin !== undefined && {
+      salaryTo: {
+        gte: salaryMin,
+      },
+    }),
+    ...(salaryMax !== undefined && {
+      salaryFrom: {
+        lte: salaryMax,
+      },
+    }),
+    ...(city && {
+      workplaceAddressLocality: {
+        contains: city,
+        mode: "insensitive",
+      },
+    }),
+    ...(postalCode && {
+      workplacePostalCode: {
+        startsWith: postalCode,
+      },
+    }),
+    ...(benefits.length > 0 && {
+      benefits: {
+        hasEvery: benefits,
+      },
+    }),
+    ...(company && {
+      company: {
+        name: {
+          contains: company,
+          mode: "insensitive",
+        },
+      },
+    }),
   };
 
   const [data, totalCount] = await Promise.all([
@@ -64,9 +126,7 @@ async function getJobs(
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy,
     }),
     prisma.jobPost.count({ where }),
   ]);
@@ -83,17 +143,47 @@ export default async function JobListings({
   jobTypes,
   contractTypes,
   location,
+  keyword,
+  salaryMin,
+  salaryMax,
+  city,
+  postalCode,
+  benefits,
+  company,
+  sort,
 }: {
   currentPage: number;
   jobTypes: string[];
   contractTypes: string[];
   location: string;
+  keyword?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  city?: string;
+  postalCode?: string;
+  benefits?: string[];
+  company?: string;
+  sort?: string;
 }) {
   const {
     jobs,
     totalPages,
     currentPage: page,
-  } = await getJobs(currentPage, 7, jobTypes, contractTypes, location);
+  } = await getJobs(
+    currentPage,
+    7,
+    jobTypes,
+    contractTypes,
+    location,
+    keyword,
+    salaryMin,
+    salaryMax,
+    city,
+    postalCode,
+    benefits,
+    company,
+    sort
+  );
 
   return (
     <>

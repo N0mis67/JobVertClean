@@ -16,6 +16,14 @@ type SearchParamsProps = {
     jobTypes?: string;
     contractTypes?: string;
     location?: string;
+    keyword?: string;
+    salaryMin?: string;
+    salaryMax?: string;
+    city?: string;
+    postalCode?: string;
+    benefits?: string;
+    company?: string;
+    sort?: string;
   }>;
 };
 
@@ -25,9 +33,30 @@ export default async function Home({ searchParams }: SearchParamsProps) {
   const jobTypes = params.jobTypes?.split(",") || [];
   const contractTypes = params.contractTypes?.split(",") || [];
   const location = params.location || "";
+  const keyword = params.keyword || "";
+  const salaryMin = params.salaryMin ? Number(params.salaryMin) : undefined;
+  const salaryMax = params.salaryMax ? Number(params.salaryMax) : undefined;
+  const city = params.city || "";
+  const postalCode = params.postalCode || "";
+  const selectedBenefits = params.benefits?.split(",").filter(Boolean) || [];
+  const company = params.company || "";
+  const sort = params.sort || "recent";
 
   // Create a composite key from all filter parameters
-  const filterKey = `page=${currentPage};types=${jobTypes.join(",")};contracts=${contractTypes.join(",")};location=${location}`;
+  const filterKey = [
+    `page=${currentPage}`,
+    `types=${jobTypes.join(",")}`,
+    `contracts=${contractTypes.join(",")}`,
+    `location=${location}`,
+    `keyword=${keyword}`,
+    `salaryMin=${salaryMin ?? ""}`,
+    `salaryMax=${salaryMax ?? ""}`,
+    `city=${city}`,
+    `postalCode=${postalCode}`,
+    `benefits=${selectedBenefits.join(",")}`,
+    `company=${company}`,
+    `sort=${sort}`,
+  ].join(";");
 
   return (
     <main>
@@ -46,6 +75,14 @@ export default async function Home({ searchParams }: SearchParamsProps) {
                 jobTypes={jobTypes}
                 contractTypes={contractTypes}
                 location={location}
+                keyword={keyword}
+                salaryMin={salaryMin}
+                salaryMax={salaryMax}
+                city={city}
+                postalCode={postalCode}
+                benefits={selectedBenefits}
+                company={company}
+                sort={sort}
               />
             </Suspense>
           </section>
