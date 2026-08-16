@@ -176,6 +176,15 @@ model JobPost {
 
   validThrough  DateTime?
 
+  externalSource     String?
+  externalId         String?   @unique
+  externalUrl        String?
+  externalUpdatedAt  DateTime?
+  importedAt         DateTime?
+  rawPayload         Json?
+  importScore        Int?
+  importScoreReasons String?
+
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId String
 

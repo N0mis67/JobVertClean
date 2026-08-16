@@ -27,6 +27,16 @@ type SearchParamsProps = {
   }>;
 };
 
+function parseOptionalNumber(value?: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsedValue = Number(value);
+
+  return Number.isFinite(parsedValue) ? parsedValue : undefined;
+}
+
 export default async function Home({ searchParams }: SearchParamsProps) {
   const params = await searchParams;
   const currentPage = Number(params.page) || 1;
@@ -34,8 +44,8 @@ export default async function Home({ searchParams }: SearchParamsProps) {
   const contractTypes = params.contractTypes?.split(",") || [];
   const location = params.location || "";
   const keyword = params.keyword || "";
-  const salaryMin = params.salaryMin ? Number(params.salaryMin) : undefined;
-  const salaryMax = params.salaryMax ? Number(params.salaryMax) : undefined;
+  const salaryMin = parseOptionalNumber(params.salaryMin);
+  const salaryMax = parseOptionalNumber(params.salaryMax);
   const city = params.city || "";
   const postalCode = params.postalCode || "";
   const selectedBenefits = params.benefits?.split(",").filter(Boolean) || [];
