@@ -1,0 +1,31 @@
+name: Import France Travail jobs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"
+
+jobs:
+  import-france-travail:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run France Travail importer
+        run: python scripts/import-france-travail-to-jobvert.py
+        env:
+          FRANCE_TRAVAIL_CLIENT_ID: ${{ secrets.FRANCE_TRAVAIL_CLIENT_ID }}
+          FRANCE_TRAVAIL_CLIENT_SECRET: ${{ secrets.FRANCE_TRAVAIL_CLIENT_SECRET }}
+          JOBVERT_IMPORT_API_URL: ${{ secrets.JOBVERT_IMPORT_API_URL }}
+          JOBVERT_IMPORT_API_SECRET: ${{ secrets.JOBVERT_IMPORT_API_SECRET }}
+          DRY_RUN: "true"
+          DAYS_BACK: "1"
+          MIN_SCORE: "70"
+          MAX_JOBS_TO_SEND: "20"
