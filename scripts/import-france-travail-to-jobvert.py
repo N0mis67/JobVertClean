@@ -275,6 +275,8 @@ def send_to_jobvert(jobs, dry_run: bool):
         headers={
             "Authorization": f"Bearer {api_secret}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "JobVertImporter/1.0 (+https://jobvert.fr)",
         },
         body=payload,
     )
