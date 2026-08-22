@@ -269,20 +269,53 @@ def send_to_jobvert(jobs, dry_run: bool):
         "jobs": jobs,
     }
 
-    status, response = http_json_request(
-    api_url,
-    method="POST",
-    headers={
-        "Authorization": f"Bearer {api_secret}",
-        "x-import-secret": api_secret,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "User-Agent": "JobVertImporter/1.0 (+https://jobvert.fr)",
-    },
-    body=payload,
-)
+    payload_json = json.dumps(payload, ensure_ascii=False)
+    payload_size = len(payload_json.encode("utf-8"))
 
-    return status, response
+    print(f"Payload size sent to JobVert: {payload_size} bytes")
+
+    import subprocess
+
+    result = subprocess.run(
+        [
+            "curl",
+            "--silent",
+            "--show-error",
+            "--fail-with-body",
+            "--max-time",
+            "90",
+            "--request",
+            "POST",
+            api_url,
+            "--header",
+            f"Authorization: Bearer {api_secret}",
+            "--header",
+            "Content-Type: application/json",
+            "--header",
+            "Accept: application/json",
+            "--header",
+            "User-Agent: JobVertImporter/1.0 (+https://jobvert.fr)",
+            "--data-binary",
+            "@-",
+        ],
+        input=payload_json,
+        text=True,
+        capture_output=True,
+    )
+
+    if result.returncode != 0:
+        print("JobVert API request failed")
+        print("STDOUT:")
+        print(result.stdout)
+        print("STDERR:")
+        print(result.stderr)
+        raise RuntimeError(f"curl failed with exit code {result.returncode}")
+
+    response_text = result.stdout.strip()
+    print("JobVert API raw response:")
+    print(response_text)
+
+    return 200, json.loads(response_text)
 
 
 def main():
