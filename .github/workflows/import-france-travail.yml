@@ -16,78 +16,66 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Smoke test JobVert import API with Node
+        run: |
+          node - <<'NODE'
+          const apiUrl = process.env.JOBVERT_IMPORT_API_URL;
+          const apiSecret = process.env.JOBVERT_IMPORT_API_SECRET;
+
+          const payload = {
+            source: "FRANCE_TRAVAIL",
+            dryRun: true,
+            jobs: [
+              {
+                externalId: `github-actions-node-smoke-test-${Date.now()}`,
+                title: "Smoke test GitHub Actions Node",
+                location: "Strasbourg",
+                employmentType: "CDI",
+                description: "Test minimal depuis GitHub Actions avec Node fetch vers l'API JobVert.",
+                score: 85,
+                scoreReasons: ["Smoke test GitHub Actions Node"]
+              }
+            ]
+          };
+
+          const body = JSON.stringify(payload);
+
+          console.log(`Payload size: ${Buffer.byteLength(body, "utf8")} bytes`);
+          console.log(`Calling JobVert API: ${apiUrl}`);
+
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${apiSecret}`,
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "User-Agent": "JobVertImporter/1.0 (+https://jobvert.fr)"
+            },
+            body
+          });
+
+          const text = await response.text();
+
+          console.log(`${response.status} ${response.statusText}`);
+          console.log(text);
+
+          if (!response.ok) {
+            process.exit(1);
+          }
+          NODE
+        env:
+          JOBVERT_IMPORT_API_URL: ${{ secrets.JOBVERT_IMPORT_API_URL }}
+          JOBVERT_IMPORT_API_SECRET: ${{ secrets.JOBVERT_IMPORT_API_SECRET }}
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Smoke test JobVert import API
-        run: |
-          python - <<'PY'
-          import os
-          import json
-          import time
-          import urllib.request
-          import urllib.error
-
-          api_url = os.environ["JOBVERT_IMPORT_API_URL"]
-          api_secret = os.environ["JOBVERT_IMPORT_API_SECRET"]
-
-          payload = {
-              "source": "FRANCE_TRAVAIL",
-              "dryRun": True,
-              "jobs": [
-                  {
-                      "externalId": f"github-actions-smoke-test-{int(time.time())}",
-                      "title": "Smoke test GitHub Actions",
-                      "location": "Strasbourg",
-                      "employmentType": "CDI",
-                      "description": "Test minimal depuis GitHub Actions vers l'API JobVert.",
-                      "score": 85,
-                      "scoreReasons": ["Smoke test GitHub Actions"]
-                  }
-              ]
-          }
-
-          data = json.dumps(payload).encode("utf-8")
-
-          print(f"Smoke test payload size: {len(data)} bytes")
-          print(f"Calling JobVert API: {api_url}")
-
-          request = urllib.request.Request(
-              api_url,
-              data=data,
-              headers={
-                  "Authorization": f"Bearer {api_secret}",
-                  "Content-Type": "application/json",
-                  "Accept": "application/json",
-                  "User-Agent": "JobVertImporter/1.0 (+https://jobvert.fr)"
-              },
-              method="POST"
-          )
-
-          try:
-              with urllib.request.urlopen(request, timeout=90) as response:
-                  body = response.read().decode("utf-8")
-                  print(f"Smoke test status: {response.status}")
-                  print(body)
-
-                  if response.status < 200 or response.status >= 300:
-                      raise RuntimeError(f"Unexpected status: {response.status}")
-
-          except urllib.error.HTTPError as error:
-              body = error.read().decode("utf-8")
-              print(f"Smoke test failed with HTTP {error.code}")
-              print(body)
-              raise
-
-          except Exception as error:
-              print(f"Smoke test failed: {error}")
-              raise
-          PY
-        env:
-          JOBVERT_IMPORT_API_URL: ${{ secrets.JOBVERT_IMPORT_API_URL }}
-          JOBVERT_IMPORT_API_SECRET: ${{ secrets.JOBVERT_IMPORT_API_SECRET }}
 
       - name: Run France Travail importer
         run: python scripts/import-france-travail-to-jobvert.py
