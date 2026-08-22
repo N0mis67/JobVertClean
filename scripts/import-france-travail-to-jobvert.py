@@ -270,16 +270,17 @@ def send_to_jobvert(jobs, dry_run: bool):
     }
 
     status, response = http_json_request(
-        api_url,
-        method="POST",
-        headers={
-            "Authorization": f"Bearer {api_secret}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": "JobVertImporter/1.0 (+https://jobvert.fr)",
-        },
-        body=payload,
-    )
+    api_url,
+    method="POST",
+    headers={
+        "Authorization": f"Bearer {api_secret}",
+        "x-import-secret": api_secret,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "JobVertImporter/1.0 (+https://jobvert.fr)",
+    },
+    body=payload,
+)
 
     return status, response
 
