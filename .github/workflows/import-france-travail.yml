@@ -28,4 +28,4 @@ jobs:
           DRY_RUN: "true"
           DAYS_BACK: "1"
           MIN_SCORE: "70"
-          MAX_JOBS_TO_SEND: "20"
+          MAX_JOBS_TO_SEND: "1"
