@@ -75,28 +75,67 @@ def env_required(name: str) -> str:
     return value
 
 
-def http_json_request(url: str, method: str = "GET", headers=None, body=None):
+def http_json_request(url: str, method: str = "GET", headers=None, body=None, retries: int = 3):
     headers = headers or {}
+
+    headers.setdefault("Accept", "application/json")
+    headers.setdefault("User-Agent", "JobVertImporter/1.0 (+https://jobvert.fr)")
 
     data = None
     if body is not None:
         data = json.dumps(body).encode("utf-8")
-        headers["Content-Type"] = "application/json"
+        headers.setdefault("Content-Type", "application/json")
 
-    request = urllib.request.Request(
-        url=url,
-        data=data,
-        headers=headers,
-        method=method,
-    )
+    for attempt in range(1, retries + 1):
+        request = urllib.request.Request(
+            url=url,
+            data=data,
+            headers=headers,
+            method=method,
+        )
 
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            raw = response.read().decode("utf-8")
-            return response.status, json.loads(raw)
-    except urllib.error.HTTPError as error:
-        raw = error.read().decode("utf-8")
-        raise RuntimeError(f"HTTP {error.code} on {url}: {raw}") from error
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                raw = response.read().decode("utf-8", errors="replace").strip()
+
+                if not raw:
+                    print(f"Empty JSON response received. status={response.status}")
+                    return response.status, {}
+
+                try:
+                    return response.status, json.loads(raw)
+                except json.JSONDecodeError:
+                    snippet = raw[:500].replace("\n", " ")
+
+                    if attempt < retries:
+                        print(f"Non-JSON response received. Retry {attempt}/{retries} in 10s...")
+                        print(f"Response preview: {snippet}")
+                        time.sleep(10)
+                        continue
+
+                    raise RuntimeError(
+                        f"Non-JSON response received after {retries} attempts. "
+                        f"status={response.status}, preview={snippet}"
+                    )
+
+        except urllib.error.HTTPError as error:
+            raw = error.read().decode("utf-8", errors="replace")
+
+            if error.code in [429, 500, 502, 503, 504] and attempt < retries:
+                wait_seconds = 60 if error.code in [429, 502, 503, 504] else 10
+                print(f"HTTP {error.code} received. Retry {attempt}/{retries} in {wait_seconds}s...")
+                time.sleep(wait_seconds)
+                continue
+
+            raise RuntimeError(f"HTTP {error.code} on {url}: {raw}") from error
+
+        except TimeoutError as error:
+            if attempt < retries:
+                print(f"Timeout received. Retry {attempt}/{retries} in 10s...")
+                time.sleep(10)
+                continue
+
+            raise RuntimeError(f"Timeout after {retries} attempts on {url}") from error
 
 
 def authenticate_france_travail() -> str:
@@ -141,17 +180,33 @@ def fetch_offers_for_keyword(token: str, keyword: str, days_back: int):
 
     url = f"{SEARCH_URL}?{params}"
 
-    status, payload = http_json_request(
-        url,
-        method="GET",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Range": "0-149",
-        },
-    )
+    try:
+        status, payload = http_json_request(
+            url,
+            method="GET",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Range": "0-149",
+                "User-Agent": "JobVertImporter/1.0 (+https://jobvert.fr)",
+            },
+        )
+    except Exception as error:
+        print(f"[{keyword}] France Travail request failed. Keyword skipped.")
+        print(f"[{keyword}] Error: {error}")
+        return []
 
-    return payload.get("resultats", [])
+    if not isinstance(payload, dict):
+        print(f"[{keyword}] Unexpected payload type. Keyword skipped.")
+        return []
+
+    results = payload.get("resultats", [])
+
+    if not isinstance(results, list):
+        print(f"[{keyword}] Unexpected resultats format. Keyword skipped.")
+        return []
+
+    return results
 
 
 def normalize_url(value):
