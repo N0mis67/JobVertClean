@@ -555,8 +555,21 @@ export default async function JobPage({ params }: { params: Params }) {
           </div>
 
           <section>
-            <JsonToHtml json={JSON.parse(data.jobDescription)} />
-          </section>
+  {(() => {
+    try {
+      return <JsonToHtml json={JSON.parse(data.jobDescription)} />;
+    } catch {
+      return (
+        <div
+          className="prose prose-sm max-w-none"
+          dangerouslySetInnerHTML={{
+            __html: descriptionHtml,
+          }}
+        />
+      );
+    }
+  })()}
+</section>
 
           <section>
             <h3 className="font-semibold mb-4">Avantages </h3>
