@@ -69,8 +69,26 @@ function getFirstLineOfAdContent(description?: string | null): string {
   }
 }
 
+function formatSalaryRange(salaryFrom: number, salaryTo: number): string {
+  const hasSalary =
+    Number.isFinite(salaryFrom) &&
+    salaryFrom > 0 &&
+    Number.isFinite(salaryTo) &&
+    salaryTo > 0;
+
+  if (!hasSalary) {
+    return "Salaire non précisé";
+  }
+
+  if (salaryFrom === salaryTo) {
+    return formatCurrency(salaryFrom);
+  }
+
+  return `${formatCurrency(salaryFrom)} - ${formatCurrency(salaryTo)}`;
+}
+
 export function JobCard({ job, index = 0 }: iAppProps) {
-    const salary = `${formatCurrency(job.salaryFrom)} - ${formatCurrency(job.salaryTo)}`;
+    const salary = formatSalaryRange(job.salaryFrom, job.salaryTo);
     const postedTime = formatRelativeTime(job.createdAt);
     const adPreview = getFirstLineOfAdContent(job.jobDescription) || job.company.about;
     const contractTypeLabel = getContractTypeLabel(
