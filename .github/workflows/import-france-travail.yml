@@ -87,4 +87,5 @@ jobs:
           DRY_RUN: "false"
           DAYS_BACK: "1"
           MIN_SCORE: "70"
-          MAX_JOBS_TO_SEND: "1"
+          MAX_JOBS_TO_SEND: "5"
+          BATCH_SIZE: "5"

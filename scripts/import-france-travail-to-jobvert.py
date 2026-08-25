@@ -1,9 +1,11 @@
-import os
 import json
+import os
+import re
+import subprocess
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
-import urllib.error
 from datetime import datetime, timedelta, timezone
 
 
@@ -77,7 +79,6 @@ def env_required(name: str) -> str:
 
 def http_json_request(url: str, method: str = "GET", headers=None, body=None, retries: int = 3):
     headers = headers or {}
-
     headers.setdefault("Accept", "application/json")
     headers.setdefault("User-Agent", "JobVertImporter/1.0 (+https://jobvert.fr)")
 
@@ -129,13 +130,14 @@ def http_json_request(url: str, method: str = "GET", headers=None, body=None, re
 
             raise RuntimeError(f"HTTP {error.code} on {url}: {raw}") from error
 
-        except TimeoutError as error:
+        except (TimeoutError, urllib.error.URLError) as error:
             if attempt < retries:
-                print(f"Timeout received. Retry {attempt}/{retries} in 10s...")
+                print(f"Network error received. Retry {attempt}/{retries} in 10s...")
+                print(f"Error: {error}")
                 time.sleep(10)
                 continue
 
-            raise RuntimeError(f"Timeout after {retries} attempts on {url}") from error
+            raise RuntimeError(f"Network error after {retries} attempts on {url}: {error}") from error
 
 
 def authenticate_france_travail() -> str:
@@ -149,20 +151,49 @@ def authenticate_france_travail() -> str:
         "scope": SCOPE,
     }).encode("utf-8")
 
-    request = urllib.request.Request(
-        AUTH_URL,
-        data=form,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        method="POST",
-    )
+    for attempt in range(1, 4):
+        request = urllib.request.Request(
+            AUTH_URL,
+            data=form,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+                "User-Agent": "JobVertImporter/1.0 (+https://jobvert.fr)",
+            },
+            method="POST",
+        )
 
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-            return payload["access_token"]
-    except urllib.error.HTTPError as error:
-        raw = error.read().decode("utf-8")
-        raise RuntimeError(f"France Travail auth failed: HTTP {error.code} — {raw}") from error
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                raw = response.read().decode("utf-8", errors="replace").strip()
+                payload = json.loads(raw)
+
+                access_token = payload.get("access_token")
+                if not access_token:
+                    raise RuntimeError(f"France Travail auth response has no access_token: {payload}")
+
+                return access_token
+
+        except urllib.error.HTTPError as error:
+            raw = error.read().decode("utf-8", errors="replace")
+
+            if error.code in [429, 500, 502, 503, 504] and attempt < 3:
+                print(f"France Travail auth HTTP {error.code}. Retry {attempt}/3 in 30s...")
+                time.sleep(30)
+                continue
+
+            raise RuntimeError(f"France Travail auth failed: HTTP {error.code} — {raw}") from error
+
+        except Exception as error:
+            if attempt < 3:
+                print(f"France Travail auth failed. Retry {attempt}/3 in 10s...")
+                print(f"Error: {error}")
+                time.sleep(10)
+                continue
+
+            raise
+
+    raise RuntimeError("France Travail auth failed after 3 attempts")
 
 
 def fetch_offers_for_keyword(token: str, keyword: str, days_back: int):
@@ -181,7 +212,7 @@ def fetch_offers_for_keyword(token: str, keyword: str, days_back: int):
     url = f"{SEARCH_URL}?{params}"
 
     try:
-        status, payload = http_json_request(
+        _status, payload = http_json_request(
             url,
             method="GET",
             headers={
@@ -225,6 +256,164 @@ def normalize_url(value):
         return "https://" + value
 
     return None
+
+
+def parse_salary_number(value: str):
+    clean = value.replace("\u00a0", " ").strip()
+    clean = re.sub(r"\s+", "", clean)
+
+    if "," in clean and "." in clean:
+        if clean.rfind(",") > clean.rfind("."):
+            clean = clean.replace(".", "").replace(",", ".")
+        else:
+            clean = clean.replace(",", "")
+    elif "," in clean:
+        clean = clean.replace(",", ".")
+
+    try:
+        return float(clean)
+    except ValueError:
+        return None
+
+
+def extract_salary_range(offer: dict):
+    salaire = offer.get("salaire") or {}
+
+    if not isinstance(salaire, dict):
+        return 0, 0
+
+    raw_salary = " ".join(
+        str(value)
+        for value in [
+            salaire.get("libelle"),
+            salaire.get("commentaire"),
+            salaire.get("complement1"),
+            salaire.get("complement2"),
+        ]
+        if value
+    )
+
+    if not raw_salary.strip():
+        return 0, 0
+
+    text = raw_salary.replace("\u00a0", " ")
+    lower_text = text.lower()
+
+    if any(signal in lower_text for signal in [
+        "non précisé",
+        "non precise",
+        "selon profil",
+        "à négocier",
+        "a negocier",
+        "selon expérience",
+        "selon experience",
+    ]):
+        return 0, 0
+
+    values = []
+
+    number_pattern = r"\d+(?:[\s\u00a0]\d{3})*(?:[,.]\d+)?|\d+(?:[,.]\d+)?"
+
+    for match in re.finditer(number_pattern, text):
+        parsed_value = parse_salary_number(match.group(0))
+
+        if parsed_value is None or parsed_value <= 0:
+            continue
+
+        start, end = match.span()
+        context = lower_text[max(0, start - 25):min(len(lower_text), end + 25)]
+
+        if "mois" in context and parsed_value <= 24:
+            continue
+
+        if "jour" in context and parsed_value <= 31:
+            continue
+
+        values.append(parsed_value)
+
+    if not values:
+        return 0, 0
+
+    is_hourly = any(signal in lower_text for signal in [
+        "horaire",
+        "heure",
+        "/h",
+        " h ",
+        "€/h",
+        "euros/h",
+        "de l'heure",
+    ])
+
+    is_monthly = any(signal in lower_text for signal in [
+        "mensuel",
+        "mensuelle",
+        "mois",
+        "/mois",
+        "par mois",
+    ])
+
+    is_yearly = (
+        "annuel" in lower_text
+        or "annuelle" in lower_text
+        or "annuels" in lower_text
+        or "annuelles" in lower_text
+        or "par an" in lower_text
+        or re.search(r"\ban\b", lower_text) is not None
+    )
+
+    multiplier = None
+    candidates = []
+
+    if is_hourly:
+        candidates = [value for value in values if 8 <= value <= 100]
+        multiplier = 35 * 52
+
+    elif is_monthly:
+        candidates = [value for value in values if 500 <= value <= 15000]
+        multiplier = 12
+
+    elif is_yearly:
+        candidates = [value for value in values if 10000 <= value <= 300000]
+        multiplier = 1
+
+    else:
+        annual_candidates = [value for value in values if 10000 <= value <= 300000]
+        monthly_candidates = [value for value in values if 500 <= value <= 15000]
+        hourly_candidates = [value for value in values if 8 <= value <= 100]
+
+        if annual_candidates:
+            candidates = annual_candidates
+            multiplier = 1
+        elif monthly_candidates:
+            candidates = monthly_candidates
+            multiplier = 12
+        elif hourly_candidates:
+            candidates = hourly_candidates
+            multiplier = 35 * 52
+
+    if not candidates or multiplier is None:
+        return 0, 0
+
+    if len(candidates) == 1:
+        salary_from = candidates[0]
+        salary_to = candidates[0]
+    else:
+        salary_from = min(candidates)
+        salary_to = max(candidates)
+
+    salary_from = round(salary_from * multiplier)
+    salary_to = round(salary_to * multiplier)
+
+    if salary_from <= 0 or salary_to <= 0:
+        return 0, 0
+
+    if salary_from > salary_to:
+        salary_from, salary_to = salary_to, salary_from
+
+    if salary_to > 300000:
+        return 0, 0
+
+    return salary_from, salary_to
 
 
 def score_offer(offer: dict):
@@ -283,6 +472,7 @@ def normalize_offer(offer: dict):
     origine = offer.get("origineOffre", {}) or {}
 
     score, score_reasons = score_offer(offer)
+    salary_from, salary_to = extract_salary_range(offer)
 
     external_url = normalize_url(origine.get("urlOrigine"))
     company_website = normalize_url(entreprise.get("url"))
@@ -294,11 +484,16 @@ def normalize_offer(offer: dict):
         "location": offer.get("lieuTravail", {}).get("libelle", "") or "France",
         "employmentType": offer.get("typeContratLibelle", "") or "Autre",
         "description": offer.get("description", "") or "",
-        "salaryFrom": 0,
-        "salaryTo": 0,
+        "salaryFrom": salary_from,
+        "salaryTo": salary_to,
         "score": score,
         "scoreReasons": score_reasons,
-        "rawPayload": offer,
+        "rawPayload": {
+            "id": external_id,
+            "source": "FRANCE_TRAVAIL",
+            "salaire": offer.get("salaire"),
+            "dateCreation": offer.get("dateCreation"),
+        },
     }
 
     if external_url:
@@ -329,8 +524,6 @@ def send_to_jobvert(jobs, dry_run: bool):
 
     print(f"Payload size sent to JobVert: {payload_size} bytes")
 
-    import subprocess
-
     result = subprocess.run(
         [
             "curl",
@@ -339,6 +532,11 @@ def send_to_jobvert(jobs, dry_run: bool):
             "--fail-with-body",
             "--max-time",
             "90",
+            "--retry",
+            "2",
+            "--retry-delay",
+            "10",
+            "--retry-all-errors",
             "--request",
             "POST",
             api_url,
@@ -367,23 +565,41 @@ def send_to_jobvert(jobs, dry_run: bool):
         raise RuntimeError(f"curl failed with exit code {result.returncode}")
 
     response_text = result.stdout.strip()
+
     print("JobVert API raw response:")
     print(response_text)
 
-    return 200, json.loads(response_text)
+    try:
+        response = json.loads(response_text)
+    except json.JSONDecodeError as error:
+        raise RuntimeError(f"JobVert API returned non-JSON response: {response_text[:500]}") from error
+
+    if not response.get("success"):
+        raise RuntimeError(f"JobVert API returned success=false: {response}")
+
+    return 200, response
 
 
 def main():
     days_back = int(os.getenv("DAYS_BACK", "1"))
     min_score = int(os.getenv("MIN_SCORE", "70"))
     max_jobs_to_send = int(os.getenv("MAX_JOBS_TO_SEND", "20"))
+    batch_size = max(1, int(os.getenv("BATCH_SIZE", "5")))
     dry_run = os.getenv("DRY_RUN", "true").lower() == "true"
 
-    print(f"Starting France Travail import — daysBack={days_back}, minScore={min_score}, maxJobs={max_jobs_to_send}, dryRun={dry_run}")
+    print(
+        "Starting France Travail import — "
+        f"daysBack={days_back}, "
+        f"minScore={min_score}, "
+        f"maxJobs={max_jobs_to_send}, "
+        f"batchSize={batch_size}, "
+        f"dryRun={dry_run}"
+    )
 
     token = authenticate_france_travail()
 
     raw_offers = []
+
     for keyword in KEYWORDS:
         offers = fetch_offers_for_keyword(token, keyword, days_back)
         print(f"[{keyword}] {len(offers)} offers found")
@@ -397,6 +613,7 @@ def main():
 
     for offer in raw_offers:
         job = normalize_offer(offer)
+
         if not job:
             continue
 
@@ -423,10 +640,34 @@ def main():
         print("No jobs to send. Import finished.")
         return
 
-    status, response = send_to_jobvert(jobs_to_send, dry_run)
+    total_created = 0
+    total_skipped = 0
+    total_received = 0
 
-    print(f"JobVert API status: {status}")
-    print(json.dumps(response, ensure_ascii=False, indent=2))
+    for index in range(0, len(jobs_to_send), batch_size):
+        batch = jobs_to_send[index:index + batch_size]
+        batch_number = index // batch_size + 1
+
+        print(f"Sending batch {batch_number} with {len(batch)} jobs to JobVert")
+
+        status, response = send_to_jobvert(batch, dry_run)
+
+        print(f"JobVert API status: {status}")
+        print(json.dumps(response, ensure_ascii=False, indent=2))
+
+        total_received += int(response.get("receivedCount", 0))
+        total_created += int(response.get("createdCount", 0))
+        total_skipped += int(response.get("skippedCount", 0))
+
+        time.sleep(2)
+
+    print("Import summary:")
+    print(json.dumps({
+        "dryRun": dry_run,
+        "receivedCount": total_received,
+        "createdCount": total_created,
+        "skippedCount": total_skipped,
+    }, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
