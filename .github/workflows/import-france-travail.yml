@@ -3,7 +3,7 @@ name: Import France Travail jobs
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 4 * * *"
+    - cron: "30 16 * * *"
 
 jobs:
   import-france-travail:
@@ -85,7 +85,7 @@ jobs:
           JOBVERT_IMPORT_API_URL: ${{ secrets.JOBVERT_IMPORT_API_URL }}
           JOBVERT_IMPORT_API_SECRET: ${{ secrets.JOBVERT_IMPORT_API_SECRET }}
           DRY_RUN: "false"
-          DAYS_BACK: "1"
+          DAYS_BACK: "2"
           MIN_SCORE: "70"
           MAX_JOBS_TO_SEND: "5"
           BATCH_SIZE: "5"
