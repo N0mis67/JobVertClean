@@ -1,84 +1,252 @@
 import { prisma } from "@/app/utils/db";
-import { stripe } from "@/app/utils/stripe";
-import { JobPostStatus } from "@prisma/client";
 import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
+import { stripe } from "@/app/utils/stripe";
+import {
+  JobPostStatus,
+  Prisma,
+  StripeWebhookEventStatus,
+} from "@prisma/client";
 import { headers } from "next/headers";
-import Stripe from "stripe";
 import { Resend } from "resend";
+import Stripe from "stripe";
+import { z } from "zod";
 
 const resend =
   process.env.RESEND_API_KEY !== undefined
     ? new Resend(process.env.RESEND_API_KEY)
     : undefined;
 
-export async function POST(req: Request) {
-  const body = await req.text();
+const jobIdSchema = z.string().uuid();
 
-  const headersList = await headers();
+type CheckoutEmailJob = {
+  jobTitle: string;
+  listingPlan: string;
+  location: string;
+};
 
-  const signature = headersList.get("Stripe-Signature") as string;
+function successfulResponse() {
+  return new Response(null, { status: 200 });
+}
 
-  let event: Stripe.Event;
+async function sendCheckoutEmails(
+  session: Stripe.Checkout.Session,
+  job: CheckoutEmailJob
+) {
+  const customerEmail = session.customer_details?.email ?? undefined;
+
+  if (!customerEmail || !resend) {
+    return;
+  }
+
+  let invoiceUrl: string | undefined;
+  try {
+    const invoiceId =
+      typeof session.invoice === "string"
+        ? session.invoice
+        : session.invoice?.id;
+    const paymentIntentId =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id;
+
+    if (invoiceId) {
+      const invoice = await stripe.invoices.retrieve(invoiceId);
+      invoiceUrl =
+        invoice.hosted_invoice_url || invoice.invoice_pdf || undefined;
+    } else if (paymentIntentId) {
+      const paymentIntent = await stripe.paymentIntents.retrieve(
+        paymentIntentId,
+        { expand: ["latest_charge"] }
+      );
+      const latestCharge = paymentIntent.latest_charge;
+
+      if (latestCharge && typeof latestCharge !== "string") {
+        invoiceUrl = latestCharge.receipt_url || undefined;
+      }
+    }
+  } catch {
+    console.error("Stripe invoice details retrieval failed.");
+  }
+
+  let plan = "";
+  let price = "";
+  let duration = "";
+  try {
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+      limit: 1,
+      expand: ["data.price.product", "data.price.recurring"],
+    });
+    const priceObject = lineItems.data[0]?.price;
+
+    if (priceObject) {
+      const product = priceObject.product;
+      plan =
+        product && typeof product !== "string" && !product.deleted
+          ? product.name
+          : "";
+      price = priceObject.unit_amount
+        ? (priceObject.unit_amount / 100).toFixed(2)
+        : "";
+      duration = priceObject.recurring?.interval ?? "";
+    }
+  } catch {
+    console.error("Stripe checkout details retrieval failed.");
+  }
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET as string
-    );
+    await resend.emails.send({
+      from: "JobVert <contact@jobvert.fr>",
+      to: [customerEmail],
+      subject: "Confirmation d'abonnement",
+      html: `
+        <p>Merci pour votre achat.</p>
+        <p>Plan : ${plan}</p>
+        <p>Prix : ${price}</p>
+        <p>Durée : ${duration}</p>
+        ${invoiceUrl ? `<p><a href="${invoiceUrl}">Voir votre facture</a></p>` : ""}
+      `,
+    });
+  } catch {
+    console.error("Stripe confirmation email delivery failed.");
+  }
+
+  try {
+    await resend.emails.send({
+      from: "JobVert <contact@jobvert.fr>",
+      to: [customerEmail],
+      subject: "Votre offre d'emploi est en ligne",
+      html: `
+        <p>Bonjour,</p>
+        <p>Votre offre <strong>${job.jobTitle}</strong> est désormais publiée.</p>
+        <p>Plan sélectionné : ${job.listingPlan}</p>
+        ${job.location ? `<p>Lieu : ${job.location}</p>` : ""}
+        <p>Merci d'utiliser JobVert pour vos recrutements.</p>
+      `,
+    });
+  } catch {
+    console.error("Job publication email delivery failed.");
+  }
+}
+
+export async function POST(req: Request) {
+  const body = await req.text();
+  const signature = (await headers()).get("Stripe-Signature");
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!signature) {
+    return new Response("Webhook error", { status: 400 });
+  }
+
+  if (!webhookSecret) {
+    console.error("Stripe webhook secret is not configured.");
+    return new Response("Webhook unavailable", { status: 500 });
+  }
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch {
     return new Response("Webhook error", { status: 400 });
   }
 
+  if (event.type !== "checkout.session.completed") {
+    return successfulResponse();
+  }
+
   const session = event.data.object as Stripe.Checkout.Session;
+  const parsedJobId = jobIdSchema.safeParse(session.metadata?.jobId);
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id;
 
-  if (event.type === "checkout.session.completed") {
-    const customerId = session.customer as string;
-    const jobId = session.metadata?.jobId;
+  let outcome:
+    | { kind: "processed"; job: CheckoutEmailJob }
+    | { kind: "ignored_invalid_metadata" }
+    | { kind: "ignored_resource_missing" };
 
-    if (!jobId) {
-      console.error("No job ID found in session metadata");
-      return new Response("No job ID found", { status: 400 });
-    }
+  try {
+    outcome = await prisma.$transaction(async (tx) => {
+      const hasValidContext = parsedJobId.success && Boolean(customerId);
 
-    const company = await prisma.user.findUnique({
-      where: {
-        stripeCustomerId: customerId,
-      },
-      select: {
-        Company: {
-          select: {
-            id: true,
+      await tx.stripeWebhookEvent.create({
+        data: {
+          id: event.id,
+          eventType: event.type,
+          status: hasValidContext
+            ? StripeWebhookEventStatus.PROCESSED
+            : StripeWebhookEventStatus.IGNORED_INVALID_METADATA,
+        },
+      });
+
+      if (!parsedJobId.success || !customerId) {
+        return { kind: "ignored_invalid_metadata" } as const;
+      }
+
+      const user = await tx.user.findUnique({
+        where: {
+          stripeCustomerId: customerId,
+        },
+        select: {
+          Company: {
+            select: {
+              id: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!company || !company.Company?.id) {
-      return new Response("Aucune entreprise trouvée", { status: 400});
-    }
+      if (!user?.Company) {
+        await tx.stripeWebhookEvent.update({
+          where: { id: event.id },
+          data: {
+            status: StripeWebhookEventStatus.IGNORED_RESOURCE_MISSING,
+          },
+        });
+        return { kind: "ignored_resource_missing" } as const;
+      }
 
-     const job = await prisma.jobPost.findUnique({
-      where: { id: jobId },
-      select: {
-        companyId: true,
-        listingPlan: true,
-        jobTitle: true,
-        location: true,
-      },
-    });
+      const job = await tx.jobPost.findUnique({
+        where: {
+          id: parsedJobId.data,
+        },
+        select: {
+          companyId: true,
+          listingPlan: true,
+          jobTitle: true,
+          location: true,
+        },
+      });
 
-    if (!job || job.companyId !== company.Company.id) {
-      return new Response("Job introuvable pour ce client", { status: 400 });
-    }
+      if (!job) {
+        await tx.stripeWebhookEvent.update({
+          where: { id: event.id },
+          data: {
+            status: StripeWebhookEventStatus.IGNORED_RESOURCE_MISSING,
+          },
+        });
+        return { kind: "ignored_resource_missing" } as const;
+      }
 
-    const tier = jobListingDurationPricing.find(
-      (pricing) => pricing.name === job.listingPlan
-    );
-    const creditsToAdd = tier?.jobLimit ?? 0;
+      if (job.companyId !== user.Company.id) {
+        await tx.stripeWebhookEvent.update({
+          where: { id: event.id },
+          data: {
+            status: StripeWebhookEventStatus.IGNORED_INVALID_METADATA,
+          },
+        });
+        return { kind: "ignored_invalid_metadata" } as const;
+      }
 
-    await prisma.$transaction([
-      prisma.planCredit.upsert({
+      const tier = jobListingDurationPricing.find(
+        (pricing) => pricing.name === job.listingPlan
+      );
+
+      if (!tier) {
+        throw new Error("Listing plan configuration not found");
+      }
+
+      await tx.planCredit.upsert({
         where: {
           companyId_plan: {
             companyId: job.companyId,
@@ -87,106 +255,70 @@ export async function POST(req: Request) {
         },
         update: {
           creditsPurchased: {
-            increment: creditsToAdd,
+            increment: tier.jobLimit,
           },
         },
         create: {
           companyId: job.companyId,
           plan: job.listingPlan,
-          creditsPurchased: creditsToAdd,
+          creditsPurchased: tier.jobLimit,
         },
-      }),
-      prisma.jobPost.update({
+      });
+
+      await tx.jobPost.update({
         where: {
-          id: jobId,
-          companyId: company.Company.id,
+          id: parsedJobId.data,
+          companyId: user.Company.id,
         },
         data: {
           status: JobPostStatus.ACTIVE,
         },
-      }),
-    ]);
-    const customerEmail = session.customer_details?.email ?? undefined;
-
-    // Retrieve invoice or receipt URL
-    let invoiceUrl: string | undefined;
-    try {
-      if (session.invoice) {
-        const invoice = await stripe.invoices.retrieve(session.invoice as string);
-        invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || undefined;
-      } else if (session.payment_intent) {
-        const paymentIntent = await stripe.paymentIntents.retrieve(
-          session.payment_intent as string,
-          { expand: ["latest_charge"] }
-        );
-        const charge = paymentIntent.latest_charge as Stripe.Charge;
-        invoiceUrl = charge?.receipt_url || undefined;
-      }
-    } catch (err) {
-      console.error("Error retrieving invoice URL:", err);
-    }
-
-    // Retrieve subscription details
-    let plan = "";
-    let price = "";
-    let duration = "";
-    try {
-      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
-        limit: 1,
-        expand: ["data.price.product", "data.price.recurring"],
       });
-      const item = lineItems.data[0];
-      const priceObj = item.price as Stripe.Price;
-      const product = priceObj.product as Stripe.Product;
 
-      plan = product.name;
-      price = priceObj.unit_amount
-        ? (priceObj.unit_amount / 100).toFixed(2)
-        : "";
-      duration = priceObj.recurring?.interval ?? "";
-    } catch (err) {
-      console.error("Error retrieving subscription details:", err);
-    }
-
-    if (customerEmail && resend) {
+      return {
+        kind: "processed",
+        job: {
+          jobTitle: job.jobTitle,
+          listingPlan: job.listingPlan,
+          location: job.location,
+        },
+      } as const;
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
       try {
-        await resend.emails.send({
-          from: "JobVert <contact@jobvert.fr>",
-          to: [customerEmail],
-          subject: "Confirmation d'abonnement",
-          html: `
-            <p>Merci pour votre achat.</p>
-            <p>Plan : ${plan}</p>
-            <p>Prix : ${price}</p>
-            <p>Durée : ${duration}</p>
-            ${invoiceUrl ? `<p><a href="${invoiceUrl}">Voir votre facture</a></p>` : ""}
-          `,
+        const existingEvent = await prisma.stripeWebhookEvent.findUnique({
+          where: { id: event.id },
+          select: { id: true },
         });
-      } catch (err) {
-        console.error("Error sending confirmation email:", err);
-      }
 
-      if (job?.jobTitle) {
-        try {
-          await resend.emails.send({
-            from: "JobVert <contact@jobvert.fr>",
-            to: [customerEmail],
-            subject: "Votre offre d'emploi est en ligne",
-            html: `
-              <p>Bonjour,</p>
-              <p>Votre offre <strong>${job.jobTitle}</strong> est désormais publiée.</p>
-              <p>Plan sélectionné : ${job.listingPlan}</p>
-              ${job.location ? `<p>Lieu : ${job.location}</p>` : ""}
-              <p>Merci d'utiliser JobVert pour vos recrutements.</p>
-            `,
-          });
-        } catch (err) {
-          console.error("Error sending job publication email:", err);
+        if (existingEvent) {
+          return successfulResponse();
         }
+      } catch {
+        console.error("Stripe webhook idempotency check failed.");
+        return new Response("Webhook processing failed", { status: 500 });
       }
     }
+
+    console.error("Stripe webhook database processing failed.");
+    return new Response("Webhook processing failed", { status: 500 });
   }
 
-  return new Response(null, { status: 200 });
+  if (outcome.kind === "ignored_resource_missing") {
+    console.warn("Stripe webhook ignored because a JobVert resource is missing.");
+    return successfulResponse();
+  }
 
-}   
+  if (outcome.kind === "ignored_invalid_metadata") {
+    console.warn("Stripe webhook ignored because its metadata is invalid.");
+    return successfulResponse();
+  }
+
+  await sendCheckoutEmails(session, outcome.job);
+
+  return successfulResponse();
+}

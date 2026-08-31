@@ -20,6 +20,7 @@ import {
   Layers2,
   LogOut,
   Settings2,
+  UserCog,
   UserCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -103,6 +104,17 @@ export function UserDropdown({
                 aria-hidden="true"
               />
               <span>Mes favoris</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/account/settings">
+              <UserCog
+                size={16}
+                strokeWidth={2}
+                className="opacity-60"
+                aria-hidden="true"
+              />
+              <span>Paramètres du compte</span>
             </Link>
           </DropdownMenuItem>
           {companyId && (

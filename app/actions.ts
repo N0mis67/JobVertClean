@@ -11,10 +11,14 @@ import { revalidatePath } from "next/cache";
 import arcjet, { detectBot, shield } from "./utils/arcjet";
 import { request } from "@arcjet/next";
 import { inngest } from "./utils/inngest/client";
-import { JobPostStatus } from "@prisma/client";
+import { JobPostStatus, StoredFileKind } from "@prisma/client";
 import { Resend } from "resend";
 import { generateUniqueJobSlug } from "./utils/jobSlug";
-import { updateSession } from "./utils/auth";
+import { signOut, updateSession } from "./utils/auth";
+import {
+  deleteOwnedStoredFile,
+  markOwnedStoredFileAsAttached,
+} from "./utils/uploadthing";
 
 const resend =
   process.env.RESEND_API_KEY !== undefined
@@ -35,6 +39,65 @@ const aj = arcjet
     })
   );
 
+export async function deleteAccount() {
+  const user = await requireUser();
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const userToDelete = await tx.user.findUnique({
+        where: {
+          id: user.id,
+        },
+        select: {
+          email: true,
+          stripeCustomerId: true,
+        },
+      });
+
+      if (!userToDelete) {
+        throw new Error("User not found");
+      }
+
+      await tx.storedFile.updateMany({
+        where: {
+          userId: user.id,
+        },
+        data: {
+          attachedAt: null,
+        },
+      });
+
+      await tx.verificationToken.deleteMany({
+        where: {
+          identifier: userToDelete.email,
+        },
+      });
+
+      if (userToDelete.stripeCustomerId) {
+        await tx.stripeCustomerCleanupJob.upsert({
+          where: {
+            stripeCustomerId: userToDelete.stripeCustomerId,
+          },
+          create: {
+            stripeCustomerId: userToDelete.stripeCustomerId,
+          },
+          update: {},
+        });
+      }
+
+      await tx.user.delete({
+        where: {
+          id: user.id,
+        },
+      });
+    });
+  } catch {
+    return { success: false as const };
+  }
+
+  await signOut({ redirectTo: "/" });
+}
+
 export async function createCompany(data: z.infer<typeof companySchema>) {
   const user = await requireUser();
 
@@ -49,8 +112,6 @@ export async function createCompany(data: z.infer<typeof companySchema>) {
 
   // Server-side validation
   const validatedData = companySchema.parse(data);
-
-  console.log(validatedData);
 
   await prisma.user.update({
     where: {
@@ -67,6 +128,12 @@ export async function createCompany(data: z.infer<typeof companySchema>) {
     },
   });
 
+  await markOwnedStoredFileAsAttached({
+    userId: user.id,
+    url: validatedData.logo,
+    kind: StoredFileKind.COMPANY_LOGO,
+  });
+
   await updateSession({
     user: {
       onboardingCompleted: true,
@@ -80,14 +147,13 @@ export async function createCompany(data: z.infer<typeof companySchema>) {
 export async function updateCompanyProfile(data: z.infer<typeof companySchema>) {
   const user = await requireUser();
 
-  const validatedData = companySchema.parse(data);
-
   const company = await prisma.company.findUnique({
     where: {
       userId: user.id as string,
     },
     select: {
       id: true,
+      logo: true,
     },
   });
 
@@ -95,12 +161,34 @@ export async function updateCompanyProfile(data: z.infer<typeof companySchema>) 
     throw new Error("Company not found");
   }
 
+  const validatedData = companySchema.parse(data);
+
   await prisma.company.update({
     where: { id: company.id },
     data: {
       ...validatedData,
     },
   });
+
+  await markOwnedStoredFileAsAttached({
+    userId: user.id,
+    url: validatedData.logo,
+    kind: StoredFileKind.COMPANY_LOGO,
+  });
+
+  if (company.logo !== validatedData.logo) {
+    try {
+      await deleteOwnedStoredFile({
+        userId: user.id,
+        url: company.logo,
+        kind: StoredFileKind.COMPANY_LOGO,
+      });
+    } catch {
+      console.error(
+        "Stored UploadThing file cleanup failed after company profile update."
+      );
+    }
+  }
 
   revalidatePath(`/company/${company.id}`);
   revalidatePath("/post-job");
@@ -134,6 +222,12 @@ export async function createJobSeeker(data: z.infer<typeof jobSeekerSchema>) {
         },
       },
     },
+  });
+
+  await markOwnedStoredFileAsAttached({
+    userId: user.id,
+    url: validatedData.resume,
+    kind: StoredFileKind.JOB_SEEKER_RESUME,
   });
 
   await updateSession({
