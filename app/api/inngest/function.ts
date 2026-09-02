@@ -1,8 +1,30 @@
 import { prisma } from "@/app/utils/db";
 import { inngest } from "@/app/utils/inngest/client";
+import { cleanupPendingStripeCustomers } from "@/app/utils/stripe-customer-cleanup";
+import { cleanupUnattachedStoredFiles } from "@/app/utils/uploadthing";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+export const cleanupStripeCustomers = inngest.createFunction(
+  { id: "cleanup-stripe-customers" },
+  { cron: "0 * * * *" },
+  async ({ step }) => {
+    return step.run("cleanup-pending-stripe-customers", async () => {
+      return cleanupPendingStripeCustomers();
+    });
+  }
+);
+
+export const cleanupUnattachedUploadThingFiles = inngest.createFunction(
+  { id: "cleanup-unattached-uploadthing-files" },
+  { cron: "0 3 * * *" },
+  async ({ step }) => {
+    return step.run("cleanup-unattached-files", async () => {
+      return cleanupUnattachedStoredFiles();
+    });
+  }
+);
 
 export const helloWorld = inngest.createFunction(
   { id: "hello-world" },

@@ -30,6 +30,7 @@ model User {
   Company      Company?
   JobSeeker    JobSeeker?
   SavedJobPost SavedJobPost[]
+  StoredFiles  StoredFile[]
   passwordResetTokens PasswordResetToken[]
 }
 
@@ -133,7 +134,7 @@ model Company {
   about    String
   defaultListingPlan ListingPlan?
   lastUsedListingPlan ListingPlan?
-  user     User    @relation(fields: [userId], references: [id])
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId   String  @unique
 
   createdAt DateTime  @default(now())
@@ -147,11 +148,68 @@ model JobSeeker {
   name   String
   about  String
   resume String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum StoredFileKind {
+  COMPANY_LOGO
+  JOB_SEEKER_RESUME
+}
+
+model StoredFile {
+  id       String         @id @default(cuid())
+  provider String
+  fileKey  String         @unique
+  url      String
+  kind     StoredFileKind
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  attachedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([provider, attachedAt, createdAt])
+}
+
+enum StripeWebhookEventStatus {
+  PROCESSED
+  IGNORED_RESOURCE_MISSING
+  IGNORED_INVALID_METADATA
+}
+
+model StripeWebhookEvent {
+  id          String                   @id
+  eventType   String
+  status      StripeWebhookEventStatus
+  processedAt DateTime                 @default(now())
+
+  @@index([processedAt])
+}
+
+enum StripeCustomerCleanupStatus {
+  PENDING
+  PROCESSING
+}
+
+model StripeCustomerCleanupJob {
+  id               String                      @id @default(cuid())
+  stripeCustomerId String                      @unique
+  status           StripeCustomerCleanupStatus @default(PENDING)
+  attempts         Int                         @default(0)
+  nextAttemptAt    DateTime                    @default(now())
+  lockedAt         DateTime?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([status, lockedAt])
 }
 
 model JobPost {
