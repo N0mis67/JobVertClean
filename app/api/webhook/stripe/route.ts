@@ -3,13 +3,17 @@ import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
 import { stripe } from "@/app/utils/stripe";
 import {
   JobPostStatus,
+  type ListingPlan,
   Prisma,
   StripeWebhookEventStatus,
 } from "@prisma/client";
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import Stripe from "stripe";
 import { z } from "zod";
+import { safeNotifyGoogleIndexingForJob } from "@/lib/google-indexing";
+import { isJobPostPubliclyAvailable } from "@/app/utils/jobPublication";
 
 const resend =
   process.env.RESEND_API_KEY !== undefined
@@ -20,8 +24,14 @@ const jobIdSchema = z.string().uuid();
 
 type CheckoutEmailJob = {
   jobTitle: string;
-  listingPlan: string;
+  listingPlan: ListingPlan;
   location: string;
+};
+
+type PublishedCheckoutJob = CheckoutEmailJob & {
+  slug: string;
+  transitionedToActive: boolean;
+  publiclyAvailable: boolean;
 };
 
 function successfulResponse() {
@@ -161,7 +171,7 @@ export async function POST(req: Request) {
       : session.customer?.id;
 
   let outcome:
-    | { kind: "processed"; job: CheckoutEmailJob }
+    | { kind: "processed"; job: PublishedCheckoutJob }
     | { kind: "ignored_invalid_metadata" }
     | { kind: "ignored_resource_missing" };
 
@@ -215,6 +225,10 @@ export async function POST(req: Request) {
           listingPlan: true,
           jobTitle: true,
           location: true,
+          slug: true,
+          status: true,
+          createdAt: true,
+          validThrough: true,
         },
       });
 
@@ -281,6 +295,14 @@ export async function POST(req: Request) {
           jobTitle: job.jobTitle,
           listingPlan: job.listingPlan,
           location: job.location,
+          slug: job.slug,
+          transitionedToActive: job.status !== JobPostStatus.ACTIVE,
+          publiclyAvailable: isJobPostPubliclyAvailable({
+            status: JobPostStatus.ACTIVE,
+            createdAt: job.createdAt,
+            validThrough: job.validThrough,
+            listingPlan: job.listingPlan,
+          }),
         },
       } as const;
     });
@@ -316,6 +338,17 @@ export async function POST(req: Request) {
   if (outcome.kind === "ignored_invalid_metadata") {
     console.warn("Stripe webhook ignored because its metadata is invalid.");
     return successfulResponse();
+  }
+
+  if (
+    outcome.job.transitionedToActive &&
+    outcome.job.publiclyAvailable
+  ) {
+    revalidatePath(`/job/${outcome.job.slug}`);
+    await safeNotifyGoogleIndexingForJob(
+      outcome.job.slug,
+      "URL_UPDATED"
+    );
   }
 
   await sendCheckoutEmails(session, outcome.job);

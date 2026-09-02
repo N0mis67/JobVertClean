@@ -19,6 +19,8 @@ import {
   deleteOwnedStoredFile,
   markOwnedStoredFileAsAttached,
 } from "./utils/uploadthing";
+import { safeNotifyGoogleIndexingForJob } from "@/lib/google-indexing";
+import { isJobPostPubliclyAvailable } from "./utils/jobPublication";
 
 const resend =
   process.env.RESEND_API_KEY !== undefined
@@ -41,9 +43,10 @@ const aj = arcjet
 
 export async function deleteAccount() {
   const user = await requireUser();
+  let deletedPublishedJobSlugs: string[] = [];
 
   try {
-    await prisma.$transaction(async (tx) => {
+    deletedPublishedJobSlugs = await prisma.$transaction(async (tx) => {
       const userToDelete = await tx.user.findUnique({
         where: {
           id: user.id,
@@ -57,6 +60,18 @@ export async function deleteAccount() {
       if (!userToDelete) {
         throw new Error("User not found");
       }
+
+      const publishedJobs = await tx.jobPost.findMany({
+        where: {
+          company: {
+            userId: user.id,
+          },
+          status: JobPostStatus.ACTIVE,
+        },
+        select: {
+          slug: true,
+        },
+      });
 
       await tx.storedFile.updateMany({
         where: {
@@ -90,9 +105,16 @@ export async function deleteAccount() {
           id: user.id,
         },
       });
+
+      return publishedJobs.map((job) => job.slug);
     });
   } catch {
     return { success: false as const };
+  }
+
+  for (const slug of deletedPublishedJobSlugs) {
+    revalidatePath(`/job/${slug}`);
+    await safeNotifyGoogleIndexingForJob(slug, "URL_DELETED");
   }
 
   await signOut({ redirectTo: "/" });
@@ -154,6 +176,10 @@ export async function updateCompanyProfile(data: z.infer<typeof companySchema>) 
     select: {
       id: true,
       logo: true,
+      name: true,
+      location: true,
+      website: true,
+      about: true,
     },
   });
 
@@ -163,12 +189,44 @@ export async function updateCompanyProfile(data: z.infer<typeof companySchema>) 
 
   const validatedData = companySchema.parse(data);
 
-  await prisma.company.update({
+  const publicCompanyDetailsChanged =
+    company.name !== validatedData.name ||
+    company.location !== validatedData.location ||
+    company.logo !== validatedData.logo ||
+    company.website !== validatedData.website ||
+    company.about !== validatedData.about;
+
+  const updatedCompany = await prisma.company.update({
     where: { id: company.id },
     data: {
       ...validatedData,
     },
+    select: {
+      JobPost: {
+        where: {
+          status: JobPostStatus.ACTIVE,
+        },
+        select: {
+          slug: true,
+          status: true,
+          createdAt: true,
+          validThrough: true,
+          listingPlan: true,
+        },
+      },
+    },
   });
+
+  if (publicCompanyDetailsChanged) {
+    const publicJobs = updatedCompany.JobPost.filter((job) =>
+      isJobPostPubliclyAvailable(job)
+    );
+
+    for (const job of publicJobs) {
+      revalidatePath(`/job/${job.slug}`);
+      await safeNotifyGoogleIndexingForJob(job.slug, "URL_UPDATED");
+    }
+  }
 
   await markOwnedStoredFileAsAttached({
     userId: user.id,
@@ -324,6 +382,11 @@ export async function createJob(data: z.infer<typeof jobSchema>) {
     },
   });
 
+  if (isJobPostPubliclyAvailable(jobPost)) {
+    revalidatePath(`/job/${jobPost.slug}`);
+    await safeNotifyGoogleIndexingForJob(jobPost.slug, "URL_UPDATED");
+  }
+
    if (!requiresPayment && resend && user.email) {
     try {
       await resend.emails.send({
@@ -427,18 +490,67 @@ export async function updateJobPost(
 
   const validatedData = jobSchema.parse(data);
 
+  const existingJob = await prisma.jobPost.findFirst({
+    where: {
+      id: jobId,
+      company: {
+        userId: user.id,
+      },
+    },
+    select: {
+      id: true,
+      slug: true,
+      status: true,
+      jobTitle: true,
+      jobDescription: true,
+      employmentType: true,
+      contractType: true,
+      location: true,
+      workplaceStreetAddress: true,
+      workplacePostalCode: true,
+      workplaceAddressLocality: true,
+      salaryFrom: true,
+      salaryTo: true,
+      listingPlan: true,
+      benefits: true,
+      createdAt: true,
+      validThrough: true,
+    },
+  });
+
+  if (!existingJob) {
+    throw new Error("Job post not found");
+  }
+
   const slug = await generateUniqueJobSlug(prisma, {
     title: validatedData.jobTitle,
     city: validatedData.location,
     excludeJobId: jobId,
   });
 
-  await prisma.jobPost.update({
+  const publicDetailsChanged =
+    existingJob.slug !== slug ||
+    existingJob.jobTitle !== validatedData.jobTitle ||
+    existingJob.jobDescription !== validatedData.jobDescription ||
+    existingJob.employmentType !== validatedData.employmentType ||
+    existingJob.contractType !== validatedData.contractType ||
+    existingJob.location !== validatedData.location ||
+    existingJob.workplaceStreetAddress !==
+      validatedData.workplaceStreetAddress.trim() ||
+    existingJob.workplacePostalCode !==
+      validatedData.workplacePostalCode.trim() ||
+    existingJob.workplaceAddressLocality !==
+      validatedData.workplaceAddressLocality.trim() ||
+    existingJob.salaryFrom !== validatedData.salaryFrom ||
+    existingJob.salaryTo !== validatedData.salaryTo ||
+    existingJob.listingPlan !== validatedData.listingPlan ||
+    JSON.stringify([...existingJob.benefits].sort()) !==
+      JSON.stringify([...validatedData.benefits].sort());
+  const existingJobWasPublic = isJobPostPubliclyAvailable(existingJob);
+
+  const updatedJob = await prisma.jobPost.update({
     where: {
-      id: jobId,
-      company: {
-        userId: user.id,
-      },
+      id: existingJob.id,
     },
     data: {
       slug,
@@ -455,7 +567,37 @@ export async function updateJobPost(
       listingPlan: validatedData.listingPlan,
       benefits: validatedData.benefits,
     },
+    select: {
+      slug: true,
+      status: true,
+      createdAt: true,
+      validThrough: true,
+      listingPlan: true,
+    },
   });
+
+  revalidatePath("/my-jobs");
+
+  if (publicDetailsChanged) {
+    const updatedJobIsPublic = isJobPostPubliclyAvailable(updatedJob);
+    const slugChanged = existingJob.slug !== updatedJob.slug;
+
+    if (slugChanged && existingJobWasPublic) {
+      revalidatePath(`/job/${existingJob.slug}`);
+      await safeNotifyGoogleIndexingForJob(
+        existingJob.slug,
+        "URL_DELETED"
+      );
+    }
+
+    if (updatedJobIsPublic) {
+      revalidatePath(`/job/${updatedJob.slug}`);
+      await safeNotifyGoogleIndexingForJob(updatedJob.slug, "URL_UPDATED");
+    } else if (!slugChanged && existingJobWasPublic) {
+      revalidatePath(`/job/${updatedJob.slug}`);
+      await safeNotifyGoogleIndexingForJob(updatedJob.slug, "URL_DELETED");
+    }
+  }
 
   return redirect("/my-jobs");
 }
@@ -463,14 +605,40 @@ export async function updateJobPost(
 export async function deleteJobPost(jobId: string) {
   const user = await requireUser();
 
-  await prisma.jobPost.delete({
-    where: {
-      id: jobId,
-      company: {
-        userId: user.id,
+  const deletedJob = await prisma.$transaction(async (tx) => {
+    const job = await tx.jobPost.findFirst({
+      where: {
+        id: jobId,
+        company: {
+          userId: user.id,
+        },
       },
-    },
+      select: {
+        id: true,
+        slug: true,
+        status: true,
+      },
+    });
+
+    if (!job) {
+      throw new Error("Job post not found");
+    }
+
+    await tx.jobPost.delete({
+      where: {
+        id: job.id,
+      },
+    });
+
+    return job;
   });
+
+  revalidatePath("/my-jobs");
+  revalidatePath(`/job/${deletedJob.slug}`);
+
+  if (deletedJob.status === JobPostStatus.ACTIVE) {
+    await safeNotifyGoogleIndexingForJob(deletedJob.slug, "URL_DELETED");
+  }
 
   return redirect("/my-jobs");
 }

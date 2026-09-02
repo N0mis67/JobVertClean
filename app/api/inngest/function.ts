@@ -3,6 +3,9 @@ import { inngest } from "@/app/utils/inngest/client";
 import { cleanupPendingStripeCustomers } from "@/app/utils/stripe-customer-cleanup";
 import { cleanupUnattachedStoredFiles } from "@/app/utils/uploadthing";
 import { Resend } from "resend";
+import { JobPostStatus } from "@prisma/client";
+import { revalidatePath } from "next/cache";
+import { safeNotifyGoogleIndexingForJob } from "@/lib/google-indexing";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -55,11 +58,45 @@ export const handleJobExpiration = inngest.createFunction(
     await step.sleep("wait-for-expiration", `${days}d`);
 
     await step.run("delete-job-post", async () => {
-      await prisma.jobPost.delete({
-        where: {
-          id: jobId,
-        },
+      const deletedJob = await prisma.$transaction(async (tx) => {
+        const job = await tx.jobPost.findUnique({
+          where: {
+            id: jobId,
+          },
+          select: {
+            id: true,
+            slug: true,
+            status: true,
+          },
+        });
+
+        if (!job) {
+          return null;
+        }
+
+        await tx.jobPost.delete({
+          where: {
+            id: job.id,
+          },
+        });
+
+        return job;
       });
+
+      if (!deletedJob) {
+        return { deleted: false };
+      }
+
+      revalidatePath(`/job/${deletedJob.slug}`);
+
+      if (deletedJob.status === JobPostStatus.ACTIVE) {
+        await safeNotifyGoogleIndexingForJob(
+          deletedJob.slug,
+          "URL_DELETED"
+        );
+      }
+
+      return { deleted: true };
     });
 
     return { jobId, message: "Job deleted" };

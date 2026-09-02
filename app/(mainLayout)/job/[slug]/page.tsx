@@ -10,7 +10,10 @@ import {
 } from "@/app/utils/jobOptions";
 import { isUuid } from "@/app/utils/jobSlug";
 import { benefits } from "@/app/utils/listOfBenefits";
-import { jobListingDurationPricing } from "@/app/utils/pricingTiers";
+import {
+  getJobPostPublicExpirationDate,
+  isJobPostPubliclyAvailable,
+} from "@/app/utils/jobPublication";
 import { JsonToHtml } from "@/components/general/JsonToHtml";
 import { CompanyLogo } from "@/components/general/CompanyLogo";
 import { SaveJobButton } from "@/components/general/SubmitButtons";
@@ -317,6 +320,7 @@ async function getJobDetails(slug: string, userId?: string) {
         updatedAt: true,
         validThrough: true,
         listingPlan: true,
+        status: true,
         company: {
           select: {
             id: true,
@@ -408,18 +412,9 @@ export default async function JobPage({ params }: { params: Params }) {
 
   const locationFlag = getFlagEmoji(data.location);
 
-  const validThrough = new Date(
-    data.createdAt.getTime() +
-      (jobListingDurationPricing.find((plan) => plan.name === data.listingPlan)
-        ?.durationDays ??
-        0) *
-        24 *
-        60 *
-        60 *
-        1000
-  );
+  const validThrough = getJobPostPublicExpirationDate(data);
 
-  if (validThrough < new Date()) {
+  if (!validThrough || !isJobPostPubliclyAvailable(data)) {
     notFound();
   }
 
@@ -433,8 +428,7 @@ export default async function JobPage({ params }: { params: Params }) {
     );
   const structuredLocation = getStructuredLocation(jobLocation);
   const datePosted = toIsoDate(data.createdAt) ?? new Date().toISOString();
-  const validThroughIso =
-    toIsoDate(data.validThrough) ?? toIsoDate(validThrough) ?? datePosted;
+  const validThroughIso = toIsoDate(validThrough) ?? datePosted;
   const hasSalary =
     Number.isFinite(data.salaryFrom) &&
     data.salaryFrom > 0 &&

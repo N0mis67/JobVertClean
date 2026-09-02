@@ -1,20 +1,12 @@
 import { MetadataRoute } from "next"
-import { JobPostStatus, ListingPlan } from "@prisma/client"
+import { JobPostStatus } from "@prisma/client"
 import { prisma } from "@/app/utils/db"
-import { planDuration } from "@/app/utils/pricingTiers"
+import { isJobPostPubliclyAvailable } from "@/app/utils/jobPublication"
 
 export const dynamic = "force-dynamic" 
 export const revalidate = 0
 
 const BASE_URL = process.env.NEXT_PUBLIC_URL ?? "https://jobvert.fr"
-
-type SitemapJob = {
-  slug: string
-  createdAt: Date
-  updatedAt: Date
-  validThrough: Date | null
-  listingPlan: ListingPlan
-}
 
 const staticRoutes: MetadataRoute.Sitemap = [
   {
@@ -49,32 +41,6 @@ const staticRoutes: MetadataRoute.Sitemap = [
   },
 ]
 
-function getPlanExpirationDate(job: SitemapJob): Date | null {
-  const durationDays = planDuration[job.listingPlan]
-
-  if (!durationDays) {
-    return null
-  }
-
-  return new Date(
-    job.createdAt.getTime() + durationDays * 24 * 60 * 60 * 1000
-  )
-}
-
-function isIndexableJob(job: SitemapJob, now: Date): boolean {
-  const planExpiration = getPlanExpirationDate(job)
-
-  if (!planExpiration || planExpiration < now) {
-    return false
-  }
-
-  if (job.validThrough && job.validThrough < now) {
-    return false
-  }
-
-  return job.slug.trim().length > 0
-}
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const jobs = await prisma.jobPost.findMany({
@@ -87,6 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         updatedAt: true,
         validThrough: true,
         listingPlan: true,
+        status: true,
       },
     })
 
@@ -96,7 +63,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...staticRoutes,
       // Offres
       ...jobs
-        .filter((job) => isIndexableJob(job, now))
+        .filter(
+          (job) =>
+            job.slug.trim().length > 0 &&
+            isJobPostPubliclyAvailable(job, now)
+        )
         .map((job) => ({
           url: `${BASE_URL}/job/${job.slug}`,
           lastModified: job.updatedAt,
