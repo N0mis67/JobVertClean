@@ -36,10 +36,17 @@ RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
+COPY --chown=nextjs:nextjs --from=builder /app/.next ./.next
 
 # Prisma schema + migrations disponibles en prod
 COPY --from=builder /app/prisma ./prisma
+
+# Scripts CLI Google Indexing et dépendances source requises
+COPY --chown=nextjs:nextjs --from=builder /app/scripts/test-google-indexing.ts ./scripts/test-google-indexing.ts
+COPY --chown=nextjs:nextjs --from=builder /app/scripts/backfill-google-indexing.ts ./scripts/backfill-google-indexing.ts
+COPY --chown=nextjs:nextjs --from=builder /app/lib/google-indexing.ts ./lib/google-indexing.ts
+COPY --chown=nextjs:nextjs --from=builder /app/app/utils/jobPublication.ts ./app/utils/jobPublication.ts
+COPY --chown=nextjs:nextjs --from=builder /app/app/utils/pricingTiers.ts ./app/utils/pricingTiers.ts
 
 # (Optionnel) Si tu utilises des fichiers de config Next (rare si absent)
 # COPY --from=builder /app/next.config.* ./
