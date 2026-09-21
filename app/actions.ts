@@ -41,6 +41,29 @@ const aj = arcjet
     })
   );
 
+async function isOnboardingRequestAllowed(action: "company" | "jobSeeker") {
+  const decision = await aj.protect(await request());
+
+  if (!decision.isDenied()) {
+    return true;
+  }
+
+  const deniedRules = decision.results.filter((result) => result.isDenied());
+  console.warn("Arcjet denied onboarding", {
+    action,
+    decisionId: decision.id,
+    reason: decision.reason.type,
+    deniedRules: deniedRules.map((result) => result.reason.type),
+  });
+
+  // A signed-in user may finish onboarding when only bot detection denies it.
+  // Shield denials (and any other denial) still block the request.
+  return (
+    deniedRules.length > 0 &&
+    deniedRules.every((result) => result.reason.isBot())
+  );
+}
+
 export async function deleteAccount() {
   const user = await requireUser();
   let deletedPublishedJobSlugs: string[] = [];
@@ -123,12 +146,7 @@ export async function deleteAccount() {
 export async function createCompany(data: z.infer<typeof companySchema>) {
   const user = await requireUser();
 
-  // Access the request object so Arcjet can analyze it
-  const req = await request();
-  // Call Arcjet protect
-  const decision = await aj.protect(req);
-
-  if (decision.isDenied()) {
+  if (!(await isOnboardingRequestAllowed("company"))) {
     throw new Error("Forbidden");
   }
 
@@ -256,37 +274,70 @@ export async function updateCompanyProfile(data: z.infer<typeof companySchema>) 
 export async function createJobSeeker(data: z.infer<typeof jobSeekerSchema>) {
   const user = await requireUser();
 
-  // Access the request object so Arcjet can analyze it
-  const req = await request();
-  // Call Arcjet protect
-  const decision = await aj.protect(req);
+  const existingUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { onboardingCompleted: true, userType: true },
+  });
 
-  if (decision.isDenied()) {
-    throw new Error("Forbidden");
+  if (existingUser?.onboardingCompleted) {
+    await updateSession({
+      user: {
+        onboardingCompleted: true,
+        userType: existingUser.userType,
+      },
+    });
+    redirect("/");
+  }
+
+  if (!(await isOnboardingRequestAllowed("jobSeeker"))) {
+    return {
+      success: false as const,
+      message: "La vérification de sécurité a refusé la demande. Veuillez réessayer.",
+    };
   }
 
   const validatedData = jobSeekerSchema.parse(data);
 
-  await prisma.user.update({
-    where: {
-      id: user.id,
-    },
-    data: {
-      onboardingCompleted: true,
-      userType: "JOB_SEEKER",
-      JobSeeker: {
-        create: {
-          ...validatedData,
+  const saved = await prisma.$transaction(async (tx) => {
+    const resume = await tx.storedFile.findFirst({
+      where: {
+        userId: user.id,
+        url: validatedData.resume,
+        kind: StoredFileKind.JOB_SEEKER_RESUME,
+        provider: "uploadthing",
+      },
+      select: { id: true },
+    });
+
+    if (!resume) {
+      return false;
+    }
+
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        onboardingCompleted: true,
+        userType: "JOB_SEEKER",
+        JobSeeker: {
+          create: validatedData,
         },
       },
-    },
+    });
+
+    await tx.storedFile.update({
+      where: { id: resume.id },
+      data: { attachedAt: new Date() },
+    });
+
+    return true;
   });
 
-  await markOwnedStoredFileAsAttached({
-    userId: user.id,
-    url: validatedData.resume,
-    kind: StoredFileKind.JOB_SEEKER_RESUME,
-  });
+  if (!saved) {
+    return {
+      success: false as const,
+      message: "Le CV téléversé est introuvable pour ce compte. Veuillez le téléverser à nouveau.",
+    };
+  }
 
   await updateSession({
     user: {

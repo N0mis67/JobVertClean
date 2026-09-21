@@ -248,7 +248,7 @@ export function EditCompanyForm({ company }: EditCompanyFormProps) {
                     <UploadDropzone
                       endpoint="imageUploader"
                       onClientUploadComplete={(res) => {
-                        const url = res?.[0]?.ufsUrl ?? res?.[0]?.url;
+                        const url = res?.[0]?.ufsUrl;
                         if (!url) {
                           toast.error(
                             "Impossible de récupérer l'URL du logo. Veuillez réessayer."

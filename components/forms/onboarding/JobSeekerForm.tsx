@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { jobSeekerSchema } from "@/app/utils/zodSchemas";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
@@ -34,15 +34,24 @@ export default function JobSeekerForm() {
     },
   });
   const [pending, setPending] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const submitting = useRef(false);
+
   async function onSubmit(values: z.infer<typeof jobSeekerSchema>) {
+    if (submitting.current) return;
+    submitting.current = true;
+    setSubmitError(null);
+    setPending(true);
+
     try {
-      setPending(true);
-      await createJobSeeker(values);
-    } catch (error) {
-      if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
-        toast.error("Something went wrong. Please try again.");
+      const result = await createJobSeeker(values);
+      if (result?.success === false) {
+        setSubmitError(result.message);
       }
+    } catch {
+      setSubmitError("L'enregistrement du profil a échoué. Veuillez réessayer.");
     } finally {
+      submitting.current = false;
       setPending(false);
     }
   }
@@ -94,7 +103,7 @@ export default function JobSeekerForm() {
                     <div className="relative w-fit">
                       <Image
                         src={image}
-                        alt="Company Logo"
+                        alt="CV téléversé"
                         width={100}
                         height={100}
                         className="rounded-lg"
@@ -113,8 +122,14 @@ export default function JobSeekerForm() {
                     <UploadDropzone
                       endpoint="resumeUploader"
                       onClientUploadComplete={(res) => {
-                        field.onChange(res[0].url);
-                        toast.success("Resume uploaded successfully!");
+                        const url = res?.[0]?.ufsUrl;
+                        if (!url) {
+                          setSubmitError("Impossible de récupérer l'URL du CV. Veuillez réessayer.");
+                          return;
+                        }
+                        field.onChange(url);
+                        setSubmitError(null);
+                        toast.success("CV téléversé avec succès !");
                       }}
                       onUploadError={() => {
                         toast.error("Something went wrong. Please try again.");
@@ -129,6 +144,7 @@ export default function JobSeekerForm() {
           )}
         />
 
+        {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? "Chargement..." : "Continuer"}
         </Button>
