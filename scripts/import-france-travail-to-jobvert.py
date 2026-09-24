@@ -464,8 +464,12 @@ def score_offer(offer: dict):
 
 
 def normalize_offer(offer: dict):
-    external_id = offer.get("id")
-    if not external_id:
+    external_id = str(offer.get("id") or "").strip()
+    if (
+        not external_id
+        or len(external_id) > 64
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", external_id)
+    ):
         return None
 
     entreprise = offer.get("entreprise", {}) or {}
@@ -474,11 +478,20 @@ def normalize_offer(offer: dict):
     score, score_reasons = score_offer(offer)
     salary_from, salary_to = extract_salary_range(offer)
 
-    external_url = normalize_url(origine.get("urlOrigine"))
+    raw_origin_url = origine.get("urlOrigine")
+    origin_url = normalize_url(raw_origin_url)
+    traced_origin_url = origin_url or (
+        str(raw_origin_url).strip() if raw_origin_url else None
+    )
     company_website = normalize_url(entreprise.get("url"))
+    france_travail_url = (
+        "https://candidat.francetravail.fr/offres/recherche/detail/"
+        f"{urllib.parse.quote(external_id, safe='')}"
+    )
 
     normalized = {
-        "externalId": str(external_id),
+        "externalId": external_id,
+        "externalUrl": france_travail_url,
         "title": offer.get("intitule", "") or "",
         "companyName": entreprise.get("nom", "") or "",
         "location": offer.get("lieuTravail", {}).get("libelle", "") or "France",
@@ -493,11 +506,9 @@ def normalize_offer(offer: dict):
             "source": "FRANCE_TRAVAIL",
             "salaire": offer.get("salaire"),
             "dateCreation": offer.get("dateCreation"),
+            "urlOrigine": traced_origin_url,
         },
     }
-
-    if external_url:
-        normalized["externalUrl"] = external_url
 
     if company_website:
         normalized["companyWebsite"] = company_website

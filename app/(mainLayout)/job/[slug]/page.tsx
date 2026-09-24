@@ -24,6 +24,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Heart } from "lucide-react";
+import { getJobApplicationAction } from "@/lib/france-travail";
 
 const BASE_URL = process.env.NEXT_PUBLIC_URL ?? "https://jobvert.fr";
 const FALLBACK_DESCRIPTION =
@@ -321,6 +322,9 @@ async function getJobDetails(slug: string, userId?: string) {
         validThrough: true,
         listingPlan: true,
         status: true,
+        externalSource: true,
+        externalId: true,
+        externalUrl: true,
         company: {
           select: {
             id: true,
@@ -434,6 +438,10 @@ export default async function JobPage({ params }: { params: Params }) {
     data.salaryFrom > 0 &&
     Number.isFinite(data.salaryTo) &&
     data.salaryTo > 0;
+  const applicationAction = getJobApplicationAction(
+    data,
+    `/job/${data.slug}/apply`
+  );
 
   const jobPostingSchema = cleanJsonLd({
     "@context": "https://schema.org",
@@ -470,7 +478,7 @@ export default async function JobPage({ params }: { params: Params }) {
       value: data.id,
     },
     url: `${BASE_URL}/job/${data.slug}`,
-    directApply: true,
+    directApply: applicationAction.kind === "native",
     dateModified: toIsoDate(data.updatedAt),
     jobBenefits: benefits
       .filter((benefit) => data.benefits.includes(benefit.id))
@@ -597,13 +605,32 @@ export default async function JobPage({ params }: { params: Params }) {
                   <h3 className="font-semibold">Postuler maintenant</h3>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  S&apos;il vous plaît, laissez {data.company.name} savoir que vous
-                  avez trouvé cet emploi sur JobVert. Cela nous aide à grandir !
+                  {applicationAction.kind === "external"
+                    ? "Vous allez être redirigé vers la fiche officielle France Travail."
+                    : applicationAction.kind === "unavailable"
+                      ? "Le lien de candidature France Travail est momentanément indisponible."
+                      : `S'il vous plaît, laissez ${data.company.name} savoir que vous avez trouvé cet emploi sur JobVert. Cela nous aide à grandir !`}
                 </p>
               </div>
-              <Button className="w-full" asChild>
-                <Link href={`/job/${data.slug}/apply`}>Postuler maintenant</Link>
-              </Button>
+              {applicationAction.kind === "external" ? (
+                <Button className="w-full" asChild>
+                  <a
+                    href={applicationAction.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Postuler sur France Travail
+                  </a>
+                </Button>
+              ) : applicationAction.kind === "native" ? (
+                <Button className="w-full" asChild>
+                  <Link href={applicationAction.href}>Postuler maintenant</Link>
+                </Button>
+              ) : (
+                <Button className="w-full" disabled>
+                  Candidature indisponible
+                </Button>
+              )}
             </div>
           </Card>
 

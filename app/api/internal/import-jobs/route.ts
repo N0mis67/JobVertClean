@@ -3,9 +3,18 @@ import { z } from "zod";
 import { prisma } from "@/app/utils/db";
 import { JobPostStatus } from "@prisma/client";
 import { generateUniqueJobSlug } from "@/app/utils/jobSlug";
+import {
+  canonicalizeFranceTravailImport,
+  normalizeFranceTravailExternalId,
+} from "@/lib/france-travail";
 
 const importedJobSchema = z.object({
-  externalId: z.string().min(1),
+  externalId: z
+    .string()
+    .refine(
+      (externalId) => normalizeFranceTravailExternalId(externalId) !== null,
+      "Invalid France Travail externalId"
+    ),
   externalUrl: z.string().url().optional(),
   title: z.string().min(2),
   companyName: z.string().optional(),
@@ -86,9 +95,17 @@ export async function POST(request: Request) {
   let skippedCount = 0;
 
   for (const job of jobs) {
+    const canonicalExternal = canonicalizeFranceTravailImport(job.externalId);
+
+    if (!canonicalExternal) {
+      // The schema already rejects this. Keep the guard close to persistence so
+      // a France Travail row can never be written without a canonical target.
+      throw new Error("Invalid France Travail externalId after validation");
+    }
+
     const existingJob = await prisma.jobPost.findUnique({
       where: {
-        externalId: job.externalId,
+        externalId: canonicalExternal.externalId,
       },
       select: {
         id: true,
@@ -121,8 +138,8 @@ export async function POST(request: Request) {
         validThrough: job.validThrough ? new Date(job.validThrough) : null,
 
         externalSource: source,
-        externalId: job.externalId,
-        externalUrl: job.externalUrl,
+        externalId: canonicalExternal.externalId,
+        externalUrl: canonicalExternal.externalUrl,
         importedAt: new Date(),
         rawPayload: job.rawPayload ?? {},
         importScore: job.score,

@@ -3,6 +3,7 @@ import { prisma } from "@/app/utils/db";
 import { isUuid } from "@/app/utils/jobSlug";
 import { redirect } from "next/navigation";
 import { ApplyForm } from "@/components/forms/ApplyForm";
+import { getJobApplicationAction } from "@/lib/france-travail";
 
 interface ApplyPageProps {
   params: Promise<{ slug: string }>;
@@ -49,6 +50,9 @@ const ApplyPage = async ({ params }: ApplyPageProps) => {
     select: {
       id: true,
       slug: true,
+      externalSource: true,
+      externalId: true,
+      externalUrl: true,
     },
   });
 
@@ -66,6 +70,9 @@ const ApplyPage = async ({ params }: ApplyPageProps) => {
         select: {
           id: true,
           slug: true,
+          externalSource: true,
+          externalId: true,
+          externalUrl: true,
         },
       });
 
@@ -81,6 +88,19 @@ const ApplyPage = async ({ params }: ApplyPageProps) => {
 
   if (job.slug !== slug) {
     return redirect(`/job/${job.slug}/apply`);
+  }
+
+  const applicationAction = getJobApplicationAction(
+    job,
+    `/job/${job.slug}/apply`
+  );
+
+  if (applicationAction.kind === "external") {
+    return redirect(applicationAction.href);
+  }
+
+  if (applicationAction.kind === "unavailable") {
+    return redirect(`/job/${job.slug}`);
   }
 
   const user = await requireUser();

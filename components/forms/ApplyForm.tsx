@@ -61,12 +61,19 @@ export function ApplyForm({ jobId, firstName, lastName, email }: ApplyFormProps)
         body: JSON.stringify(values),
       });
       if (!res.ok) {
-        throw new Error("Failed to submit application");
+        const payload = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(payload?.error ?? "La candidature n'a pas pu être envoyée.");
       }
-      toast.success("Application submitted successfully!");  // Succès de l’envoi
+      toast.success("Candidature envoyée avec succès !");  // Succès de l’envoi
       // TODO: éventuellement rediriger ou afficher une confirmation supplémentaire
-    } catch {
-      toast.error("Something went wrong. Please try again."); // Erreur lors de l’envoi
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Une erreur est survenue. Veuillez réessayer."
+      ); // Erreur lors de l’envoi
     } finally {
       setPending(false);
     }

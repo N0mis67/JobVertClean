@@ -7,8 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types tests/run.ts && python -m unittest discover -s scripts/tests -p \"test_*.py\"",
     "google:indexing:test": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env --conditions=react-server --experimental-strip-types scripts/test-google-indexing.ts",
     "google:indexing:backfill": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env --conditions=react-server --experimental-strip-types scripts/backfill-google-indexing.ts",
+    "france-travail:backfill": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env --experimental-strip-types scripts/backfill-france-travail-urls.ts",
     "populate:job-slugs": "node scripts/populate-job-slugs.mjs",
     "audit:company-logos": "node scripts/audit-company-logos.mjs"
   },
