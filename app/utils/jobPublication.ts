@@ -14,21 +14,19 @@ export type PublicJobPostState = {
 export function getJobPostPublicExpirationDate(
   job: Pick<PublicJobPostState, "createdAt" | "validThrough" | "listingPlan">
 ): Date | null {
+  if (job.validThrough) {
+    return job.validThrough;
+  }
+
   const durationDays = planDuration[job.listingPlan];
 
   if (!durationDays) {
     return null;
   }
 
-  const planExpiration = new Date(
+  return new Date(
     job.createdAt.getTime() + durationDays * DAY_IN_MILLISECONDS
   );
-
-  if (job.validThrough && job.validThrough < planExpiration) {
-    return job.validThrough;
-  }
-
-  return planExpiration;
 }
 
 export function isJobPostPubliclyAvailable(
