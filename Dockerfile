@@ -45,6 +45,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --chown=nextjs:nextjs --from=builder /app/scripts/test-google-indexing.ts ./scripts/test-google-indexing.ts
 COPY --chown=nextjs:nextjs --from=builder /app/scripts/backfill-google-indexing.ts ./scripts/backfill-google-indexing.ts
 COPY --chown=nextjs:nextjs --from=builder /app/lib/google-indexing.ts ./lib/google-indexing.ts
+COPY --chown=nextjs:nextjs --from=builder /app/lib/france-travail.ts ./lib/france-travail.ts
 COPY --chown=nextjs:nextjs --from=builder /app/app/utils/jobPublication.ts ./app/utils/jobPublication.ts
 COPY --chown=nextjs:nextjs --from=builder /app/app/utils/pricingTiers.ts ./app/utils/pricingTiers.ts
 
