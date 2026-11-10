@@ -229,6 +229,7 @@ export async function POST(req: Request) {
           status: true,
           createdAt: true,
           validThrough: true,
+          externalSource: true,
         },
       });
 
@@ -302,6 +303,7 @@ export async function POST(req: Request) {
             createdAt: job.createdAt,
             validThrough: job.validThrough,
             listingPlan: job.listingPlan,
+            externalSource: job.externalSource,
           }),
         },
       } as const;

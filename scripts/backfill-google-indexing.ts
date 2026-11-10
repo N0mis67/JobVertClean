@@ -101,6 +101,7 @@ async function main() {
         createdAt: true,
         validThrough: true,
         listingPlan: true,
+        externalSource: true,
       },
       orderBy: {
         createdAt: "asc",

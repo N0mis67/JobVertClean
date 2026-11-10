@@ -230,6 +230,7 @@ export async function updateCompanyProfile(data: z.infer<typeof companySchema>) 
           createdAt: true,
           validThrough: true,
           listingPlan: true,
+          externalSource: true,
         },
       },
     },
@@ -566,6 +567,7 @@ export async function updateJobPost(
       benefits: true,
       createdAt: true,
       validThrough: true,
+      externalSource: true,
     },
   });
 
@@ -624,6 +626,7 @@ export async function updateJobPost(
       createdAt: true,
       validThrough: true,
       listingPlan: true,
+      externalSource: true,
     },
   });
 

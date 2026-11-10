@@ -418,7 +418,7 @@ export default async function JobPage({ params }: { params: Params }) {
 
   const validThrough = getJobPostPublicExpirationDate(data);
 
-  if (!validThrough || !isJobPostPubliclyAvailable(data)) {
+  if (!isJobPostPubliclyAvailable(data)) {
     notFound();
   }
 
@@ -432,7 +432,7 @@ export default async function JobPage({ params }: { params: Params }) {
     );
   const structuredLocation = getStructuredLocation(jobLocation);
   const datePosted = toIsoDate(data.createdAt) ?? new Date().toISOString();
-  const validThroughIso = toIsoDate(validThrough) ?? datePosted;
+  const validThroughIso = toIsoDate(validThrough);
   const hasSalary =
     Number.isFinite(data.salaryFrom) &&
     data.salaryFrom > 0 &&
@@ -642,11 +642,13 @@ export default async function JobPage({ params }: { params: Params }) {
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Appliquer avant</span>
                   <span className="text-sm">
-                    {validThrough.toLocaleDateString("fr-FR", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {validThrough
+                      ? validThrough.toLocaleDateString("fr-FR", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "Non précisée"}
                   </span>
                 </div>
                 <div className="flex justify-between">

@@ -54,6 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         validThrough: true,
         listingPlan: true,
         status: true,
+        externalSource: true,
       },
     })
 
